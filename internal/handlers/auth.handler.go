@@ -12,20 +12,9 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type RegisterRequest struct{
-	Name string `json:"name"`
-	Email string `json:"email"`
-	Password string `json:"password"`
-}
-
-type LoginRequest struct{
-	Email string `json:"email"`
-	Password string `json:"password"`
-}
-
 
 func Register(w http.ResponseWriter, r *http.Request){
-	var req RegisterRequest
+	var req models.RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err!=nil{
 		http.Error(w, "Invalid payload", http.StatusBadRequest)
 		return
@@ -55,7 +44,7 @@ func Register(w http.ResponseWriter, r *http.Request){
 }
 
 func Login(w http.ResponseWriter, r *http.Request){
-	var req LoginRequest
+	var req models.LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil{
 		http.Error(w, "Invalid payload", http.StatusBadRequest)
 		return

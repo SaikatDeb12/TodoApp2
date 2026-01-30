@@ -29,3 +29,35 @@ type Session struct{
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 	ExpiresAt time.Time `json:"expires_at" db:"expires_at"`
 }
+
+type CreateTodoRequest struct {
+	Title string `json:"title"`
+	Body string `json:"body"`
+	ValidTill time.Time `json:"validTill"`
+}
+
+type UpdateTodoRequest struct{
+	Title *string `json:"title"`
+	Body *string `json:"body"`
+	Complete *bool `json:"complete"`
+	ValidTill *time.Time `json:"valid_till"`
+}
+
+type UpcomingTodosRequest struct{
+	Title *string `json:"title"`
+	Body *string `json:"body"`
+	Complete *bool `json:"complete"`
+	ValidTill *time.Time `json:"valid_till"`
+}
+
+type RegisterRequest struct{
+	Name string `json:"name"`
+	Email string `json:"email"`
+	Password string `json:"password"`
+}
+
+type LoginRequest struct{
+	Email string `json:"email"`
+	Password string `json:"password"`
+}
+

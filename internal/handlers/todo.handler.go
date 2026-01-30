@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/Saikatdeb12/TodoApp2/internal/database"
 	"github.com/Saikatdeb12/TodoApp2/internal/models"
@@ -14,14 +13,9 @@ import (
 	"github.com/google/uuid"
 )
 
-type CreateTodoRequest struct {
-	Title string `json:"title"`
-	Body string `json:"body"`
-	ValidTill time.Time `json:"validTill"`
-}
 
 func CreateTodo(w http.ResponseWriter, r *http.Request){
-	var req CreateTodoRequest
+	var req models.CreateTodoRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid payload", http.StatusBadRequest)
 		return
@@ -134,12 +128,6 @@ func GetTodoByID (w http.ResponseWriter, r *http.Request){
 	json.NewEncoder(w).Encode(todo)
 }
 
-type UpdateTodoRequest struct{
-	Title *string `json:"title"`
-	Body *string `json:"body"`
-	Complete *bool `json:"complete"`
-	ValidTill *time.Time `json:"valid_till"`
-}
 
 func UpdateTodoByID(w http.ResponseWriter, r *http.Request){
 	userId, err := utils.GetUserID(r.Context())
@@ -154,7 +142,7 @@ func UpdateTodoByID(w http.ResponseWriter, r *http.Request){
 		return
 	}
 
-	var req UpdateTodoRequest
+	var req models.UpdateTodoRequest
 	if err:= json.NewDecoder(r.Body).Decode(&req); err!=nil {
 		http.Error(w, "Invalid payload", http.StatusBadRequest)
 		return
@@ -256,6 +244,7 @@ func CompletedTodos(w http.ResponseWriter, r *http.Request){
 	
 	json.NewEncoder(w).Encode(todos)
 }
+
 func InCompleteTodos(w http.ResponseWriter, r *http.Request){
 	userId, err := utils.GetUserID(r.Context())
 	if err != nil {
@@ -290,13 +279,6 @@ func InCompleteTodos(w http.ResponseWriter, r *http.Request){
 	
 	json.NewEncoder(w).Encode(todos)
 
-}
-
-type UpcomingTodosRequest struct{
-	Title *string `json:"title"`
-	Body *string `json:"body"`
-	Complete *bool `json:"complete"`
-	ValidTill *time.Time `json:"valid_till"`
 }
 
 func UpcomingTodosByDate(w http.ResponseWriter, r *http.Request){
@@ -352,6 +334,3 @@ func UpcomingTodosByDate(w http.ResponseWriter, r *http.Request){
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(todos)
 }
-
-
-
