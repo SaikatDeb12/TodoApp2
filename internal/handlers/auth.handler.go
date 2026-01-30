@@ -8,6 +8,7 @@ import (
 
 	"github.com/Saikatdeb12/TodoApp2/internal/database"
 	"github.com/Saikatdeb12/TodoApp2/internal/models"
+	"github.com/Saikatdeb12/TodoApp2/internal/utils"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -15,8 +16,8 @@ import (
 
 func Register(w http.ResponseWriter, r *http.Request){
 	var req models.RegisterRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err!=nil{
-		http.Error(w, "Invalid payload", http.StatusBadRequest)
+	if parseErr := utils.ParseBody(r.Body, &req); parseErr!=nil {
+		
 		return
 	}
 
