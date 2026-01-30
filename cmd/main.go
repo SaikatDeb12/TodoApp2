@@ -5,6 +5,8 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/Saikatdeb12/TodoApp2/internal/database"
+	"github.com/Saikatdeb12/TodoApp2/internal/routes"
 )
 func main(){
 	database.Connect()

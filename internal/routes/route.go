@@ -1,6 +1,10 @@
 package routes
 
-import "github.com/go-chi/chi/v5"
+import (
+	"github.com/Saikatdeb12/TodoApp2/internal/handlers"
+	middlewares "github.com/Saikatdeb12/TodoApp2/internal/middleware"
+	"github.com/go-chi/chi/v5"
+)
 
 func SetupRouter() *chi.Mux{
 	r := chi.NewRouter()
