@@ -30,15 +30,26 @@ type Session struct{
 	ExpiresAt time.Time `json:"expires_at" db:"expires_at"`
 }
 
+type RegisterRequest struct{
+	Name string `json:"name" validate:"required,min=2,max=50"`
+	Email string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required,gte=8,lte=30"`
+}
+
+type LoginRequest struct{
+	Email string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required"`
+}
+
 type CreateTodoRequest struct {
-	Title string `json:"title"`
-	Body string `json:"body"`
-	ValidTill time.Time `json:"validTill"`
+	Title      string    `json:"title" validate:"required,min=3,max=100"`
+	Body string `json:"body" validate:"required"`
+	ValidTill time.Time `json:"validTill" validate:"required"`
 }
 
 type UpdateTodoRequest struct{
-	Title *string `json:"title"`
-	Body *string `json:"body"`
+	Title *string `json:"title" validate:"omitempty,min=3,max=100"`
+	Body *string `json:"body" validate:"omitempty"`
 	Complete *bool `json:"complete"`
 	ValidTill *time.Time `json:"valid_till"`
 }
@@ -48,16 +59,5 @@ type UpcomingTodosRequest struct{
 	Body *string `json:"body"`
 	Complete *bool `json:"complete"`
 	ValidTill *time.Time `json:"valid_till"`
-}
-
-type RegisterRequest struct{
-	Name string `json:"name"`
-	Email string `json:"email"`
-	Password string `json:"password"`
-}
-
-type LoginRequest struct{
-	Email string `json:"email"`
-	Password string `json:"password"`
 }
 

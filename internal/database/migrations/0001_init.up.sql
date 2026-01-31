@@ -44,8 +44,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE INDEX idx_sessions_user_id
     ON sessions (user_id);
 
--- fast cleanup of expired sessions
 CREATE INDEX idx_sessions_expires_at
     ON sessions (expires_at);
 
-COMMIT
+COMMIT;
