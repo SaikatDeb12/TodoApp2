@@ -58,7 +58,7 @@ func CreateTodoSQL(user_id uuid.UUID, title, body string, valid_till time.Time) 
 	query := `
 		INSERT INTO todos (user_id, title, body, valid_till)
 		VALUES ($1, $2, $3, $4)
-		RETURNING id, created_at
+		RETURNING id, user_id, title, body, created_at, valid_till, complete
 	`
 	var todo models.Todo
 	err := DB.QueryRow(
@@ -66,4 +66,31 @@ func CreateTodoSQL(user_id uuid.UUID, title, body string, valid_till time.Time) 
 	).Scan(&todo.TodoID, &todo.UserID, &todo.Title, &todo.Body, &todo.CreatedAt, &todo.ValidTill, &todo.Complete)
 
 	return todo, err
+}
+
+func GetAllTodos(user_id uuid.UUID) ([]models.Todo, error) {
+	SQL := `
+		SELECT id, user_id, title, body, created_at, valid_till
+		FROM todos
+		WHERE user_id=$1
+	`
+	rows, _ := DB.Query(SQL, user_id)
+	defer rows.Close()
+
+	todos := []models.Todo{}
+	for rows.Next() {
+		var todo models.Todo
+		if err := rows.Scan(&todo.TodoID, &todo.Title, &todo.Body, &todo.ValidTill, &todo.Complete); err != nil {
+			return todos, err
+		}
+		todos = append(todos, todo)
+	}
+
+	return todos, nil
+}
+
+func GetAllCompletedTodos(user_id uuid.UUID) ([]models.Todo, error) {
+}
+
+func GetAllIncompletedTodos(user_id uuid.UUID) ([]models.Todo, error) {
 }

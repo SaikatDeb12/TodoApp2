@@ -38,44 +38,35 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 	todo.Body = req.Body
 	todo.ValidTill = req.ValidTill
 
-	// w.WriteHeader(http.StatusCreated)
-	// json.NewEncoder(w).Encode(todo)
 	utils.RespondJSON(w, http.StatusCreated, todo)
 }
 
 func GetTodos(w http.ResponseWriter, r *http.Request) {
-	userID, err := utils.GetUserID(r.Context())
+	userId, err := utils.GetUserID(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
-
-	query := `
-		SELECT id, title, body, created_at, complete, valid_till
-		FROM todos
-		WHERE user_id=$1
-		ORDER BY created_at DESC
-	`
-
-	rows, err := database.DB.Query(query, userID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	defer rows.Close()
-
-	todos := []models.Todo{}
-	for rows.Next() {
-		var todo models.Todo
-		if err := rows.Scan(&todo.TodoID, &todo.Title, &todo.Body, &todo.CreatedAt, &todo.Complete, &todo.ValidTill); err != nil {
+	query := chi.URLParam(r, "complete")
+	if query == "" {
+		todos, err := database.GetAllTodos(userId)
+		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		todos = append(todos, todo)
+
+		utils.RespondJSON(w, http.StatusOK, todos)
 	}
 
-	json.NewEncoder(w).Encode(todos)
+	completed, err := strconv.Atoi(query)
+	if err != nil {
+		http.Error(w, "Invalid query", http.StatusBadRequest)
+		return
+	}
+
+	if completed == true {
+	} else {
+	}
 }
 
 func GetTodoByID(w http.ResponseWriter, r *http.Request) {
