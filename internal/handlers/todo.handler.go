@@ -13,8 +13,7 @@ import (
 	"github.com/google/uuid"
 )
 
-
-func CreateTodo(w http.ResponseWriter, r *http.Request){
+func CreateTodo(w http.ResponseWriter, r *http.Request) {
 	var req models.CreateTodoRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid payload", http.StatusBadRequest)
@@ -27,36 +26,28 @@ func CreateTodo(w http.ResponseWriter, r *http.Request){
 		return
 	}
 
-	query := `
-		INSERT INTO todos (user_id, title, body, valid_till)
-		VALUES ($1, $2, $3, $4)
-		RETURNING id, created_at
-	`
-
 	var todo models.Todo
-	err = database.DB.QueryRow(
-		query, userId, req.Title, req.Body, req.ValidTill,
-	).Scan(&todo.TodoID, &todo.CreatedAt)
-
-	if err != nil{
+	todo, err = database.CreateTodoSQL(userId, req.Title, req.Body, req.ValidTill)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	todo.Title=req.Title
-	todo.Body=req.Body
-	todo.ValidTill=req.ValidTill
-		
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(todo)
+	todo.UserID = userId
+	todo.Title = req.Title
+	todo.Body = req.Body
+	todo.ValidTill = req.ValidTill
 
+	// w.WriteHeader(http.StatusCreated)
+	// json.NewEncoder(w).Encode(todo)
+	utils.RespondJSON(w, http.StatusCreated, todo)
 }
 
-func GetTodos(w http.ResponseWriter, r *http.Request){
+func GetTodos(w http.ResponseWriter, r *http.Request) {
 	userID, err := utils.GetUserID(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return 
+		return
 	}
 
 	query := `
@@ -75,7 +66,7 @@ func GetTodos(w http.ResponseWriter, r *http.Request){
 	defer rows.Close()
 
 	todos := []models.Todo{}
-	for rows.Next(){
+	for rows.Next() {
 		var todo models.Todo
 		if err := rows.Scan(&todo.TodoID, &todo.Title, &todo.Body, &todo.CreatedAt, &todo.Complete, &todo.ValidTill); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -87,7 +78,7 @@ func GetTodos(w http.ResponseWriter, r *http.Request){
 	json.NewEncoder(w).Encode(todos)
 }
 
-func GetTodoByID (w http.ResponseWriter, r *http.Request){
+func GetTodoByID(w http.ResponseWriter, r *http.Request) {
 	userID, err := utils.GetUserID(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
@@ -128,8 +119,7 @@ func GetTodoByID (w http.ResponseWriter, r *http.Request){
 	json.NewEncoder(w).Encode(todo)
 }
 
-
-func UpdateTodoByID(w http.ResponseWriter, r *http.Request){
+func UpdateTodoByID(w http.ResponseWriter, r *http.Request) {
 	userId, err := utils.GetUserID(r.Context())
 	if err != nil {
 		http.Error(w, "Invalid user id", http.StatusUnauthorized)
@@ -137,13 +127,13 @@ func UpdateTodoByID(w http.ResponseWriter, r *http.Request){
 	}
 
 	todoId, err := uuid.Parse(chi.URLParam(r, "id"))
-	if err !=nil {
+	if err != nil {
 		http.Error(w, "Invalid todo id", http.StatusBadRequest)
 		return
 	}
 
 	var req models.UpdateTodoRequest
-	if err:= json.NewDecoder(r.Body).Decode(&req); err!=nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid payload", http.StatusBadRequest)
 		return
 	}
@@ -159,23 +149,22 @@ func UpdateTodoByID(w http.ResponseWriter, r *http.Request){
 	`
 
 	res, err := database.DB.Exec(query, req.Title, req.Body, req.Complete, req.ValidTill, todoId, userId)
-	if err!= nil {
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	//again to check the number of affect rows
+	// again to check the number of affect rows
 	aff, _ := res.RowsAffected()
-	if aff == 0{
+	if aff == 0 {
 		http.Error(w, "Todo not found", http.StatusNotFound)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string] string {
+	json.NewEncoder(w).Encode(map[string]string{
 		"msg": "Todo updated successfully",
 	})
-
 }
 
 func DeleteTodoByID(w http.ResponseWriter, r *http.Request) {
@@ -209,11 +198,11 @@ func DeleteTodoByID(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"msg": "Todo deleted"})
 }
 
-func CompletedTodos(w http.ResponseWriter, r *http.Request){
+func CompletedTodos(w http.ResponseWriter, r *http.Request) {
 	userId, err := utils.GetUserID(r.Context())
 	if err != nil {
 		http.Error(w, "Invalid user", http.StatusUnauthorized)
-		return 
+		return
 	}
 
 	query := `
@@ -226,30 +215,29 @@ func CompletedTodos(w http.ResponseWriter, r *http.Request){
 	rows, err := database.DB.Query(query, userId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return 
+		return
 	}
 
 	defer rows.Close()
 
-
 	todos := []models.Todo{}
-	for rows.Next(){
+	for rows.Next() {
 		var todo models.Todo
-		if err := rows.Scan(&todo.TodoID, &todo.Title, &todo.Body, &todo.CreatedAt, &todo.Complete, &todo.ValidTill); err!=nil {
+		if err := rows.Scan(&todo.TodoID, &todo.Title, &todo.Body, &todo.CreatedAt, &todo.Complete, &todo.ValidTill); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		todos=append(todos, todo)
+		todos = append(todos, todo)
 	}
-	
+
 	json.NewEncoder(w).Encode(todos)
 }
 
-func InCompleteTodos(w http.ResponseWriter, r *http.Request){
+func InCompleteTodos(w http.ResponseWriter, r *http.Request) {
 	userId, err := utils.GetUserID(r.Context())
 	if err != nil {
 		http.Error(w, "Invalid user", http.StatusUnauthorized)
-		return 
+		return
 	}
 
 	query := `
@@ -262,41 +250,40 @@ func InCompleteTodos(w http.ResponseWriter, r *http.Request){
 	rows, err := database.DB.Query(query, userId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return 
+		return
 	}
 
 	defer rows.Close()
 
 	todos := []models.Todo{}
-	for rows.Next(){
+	for rows.Next() {
 		var todo models.Todo
-		if err := rows.Scan(&todo.TodoID, &todo.Title, &todo.Body, &todo.CreatedAt, &todo.Complete, &todo.ValidTill); err!=nil {
+		if err := rows.Scan(&todo.TodoID, &todo.Title, &todo.Body, &todo.CreatedAt, &todo.Complete, &todo.ValidTill); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		todos=append(todos, todo)
+		todos = append(todos, todo)
 	}
-	
-	json.NewEncoder(w).Encode(todos)
 
+	json.NewEncoder(w).Encode(todos)
 }
 
-func UpcomingTodosByDate(w http.ResponseWriter, r *http.Request){
+func UpcomingTodosByDate(w http.ResponseWriter, r *http.Request) {
 	userId, err := utils.GetUserID(r.Context())
 	if err != nil {
 		http.Error(w, "Invalid user id", http.StatusUnauthorized)
 		return
 	}
 
-	dayParam:=r.URL.Query().Get("days")
+	dayParam := r.URL.Query().Get("days")
 	var days int
-	if(dayParam==""){
-		days=0
-	} else{
+	if dayParam == "" {
+		days = 0
+	} else {
 		days, err = strconv.Atoi(r.URL.Query().Get("days"))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return;
+			return
 		}
 	}
 
@@ -319,7 +306,7 @@ func UpcomingTodosByDate(w http.ResponseWriter, r *http.Request){
 	defer rows.Close()
 
 	var todos []models.Todo
-	for rows.Next(){
+	for rows.Next() {
 		var todo models.Todo
 		if err := rows.Scan(
 			&todo.TodoID, &todo.Title, &todo.Body, &todo.CreatedAt, &todo.Complete, &todo.ValidTill,

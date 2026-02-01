@@ -53,3 +53,17 @@ func DeleteSession(sessionID uuid.UUID) (int64, error) {
 	}
 	return res.RowsAffected()
 }
+
+func CreateTodoSQL(user_id uuid.UUID, title, body string, valid_till time.Time) (models.Todo, error) {
+	query := `
+		INSERT INTO todos (user_id, title, body, valid_till)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id, created_at
+	`
+	var todo models.Todo
+	err := DB.QueryRow(
+		query, user_id, title, body, valid_till,
+	).Scan(&todo.TodoID, &todo.UserID, &todo.Title, &todo.Body, &todo.CreatedAt, &todo.ValidTill, &todo.Complete)
+
+	return todo, err
+}

@@ -10,7 +10,7 @@ services:
         environment:
             POSTGRES_USER: todo2_user
             POSTGRES_PASSWORD: todo2_pass
-            POSTGRES_DB: todo_db
+            POSTGRES_DB: todo2_db
         volumes:
             - pgdata://var/lib/postgresql/data
         healthcheck:

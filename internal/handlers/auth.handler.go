@@ -11,6 +11,8 @@ import (
 	"github.com/google/uuid"
 )
 
+// {"session":"066dfad3-fadd-451c-b91a-a4b5fe73f30e"}
+
 func Register(w http.ResponseWriter, r *http.Request) {
 	var req models.RegisterRequest
 
