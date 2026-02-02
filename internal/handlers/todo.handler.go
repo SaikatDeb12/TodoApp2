@@ -47,26 +47,25 @@ func GetTodos(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
-	query := chi.URLParam(r, "complete")
+	query := r.URL.Query().Get("complete")
+
+	var todos []models.Todo
 	if query == "" {
-		todos, err := database.GetAllTodos(userId)
+		todos, err = database.GetAllTodos(userId)
+	} else {
+		complete, err := strconv.ParseBool(query)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, "Invalid query", http.StatusBadRequest)
 			return
 		}
-
-		utils.RespondJSON(w, http.StatusOK, todos)
+		todos, err = database.GetAllTodosByFilter(userId, complete)
 	}
 
-	completed, err := strconv.Atoi(query)
 	if err != nil {
-		http.Error(w, "Invalid query", http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	if completed == true {
-	} else {
-	}
+	utils.RespondJSON(w, http.StatusOK, todos)
 }
 
 func GetTodoByID(w http.ResponseWriter, r *http.Request) {

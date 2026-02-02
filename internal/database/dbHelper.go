@@ -70,17 +70,21 @@ func CreateTodoSQL(user_id uuid.UUID, title, body string, valid_till time.Time) 
 
 func GetAllTodos(user_id uuid.UUID) ([]models.Todo, error) {
 	SQL := `
-		SELECT id, user_id, title, body, created_at, valid_till
+		SELECT id, title, body, created_at, valid_till
 		FROM todos
 		WHERE user_id=$1
 	`
-	rows, _ := DB.Query(SQL, user_id)
+	todos := []models.Todo{}
+	rows, err := DB.Query(SQL, user_id)
+	if err != nil {
+		return todos, err
+	}
+
 	defer rows.Close()
 
-	todos := []models.Todo{}
 	for rows.Next() {
 		var todo models.Todo
-		if err := rows.Scan(&todo.TodoID, &todo.Title, &todo.Body, &todo.ValidTill, &todo.Complete); err != nil {
+		if err := rows.Scan(&todo.TodoID, &todo.Title, &todo.Body, &todo.CreatedAt, &todo.ValidTill, &todo.Complete); err != nil {
 			return todos, err
 		}
 		todos = append(todos, todo)
@@ -89,8 +93,28 @@ func GetAllTodos(user_id uuid.UUID) ([]models.Todo, error) {
 	return todos, nil
 }
 
-func GetAllCompletedTodos(user_id uuid.UUID) ([]models.Todo, error) {
-}
+func GetAllTodosByFilter(user_id uuid.UUID, complete bool) ([]models.Todo, error) {
+	SQL := `
+		SELECT id, title, body, created_at, valid_till
+		FROM todos
+		WHERE user_id=$1 AND complete=$2
+		ORDER BY created_at DESC
+	`
 
-func GetAllIncompletedTodos(user_id uuid.UUID) ([]models.Todo, error) {
+	todos := []models.Todo{}
+	rows, err := DB.Query(SQL, user_id, complete)
+	if err != nil {
+		return todos, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var todo models.Todo
+		if err := rows.Scan(&todo.TodoID, &todo.Title, &todo.Body, &todo.CreatedAt, &todo.ValidTill); err != nil {
+			return todos, err
+		}
+		todos = append(todos, todo)
+	}
+
+	return todos, nil
 }
