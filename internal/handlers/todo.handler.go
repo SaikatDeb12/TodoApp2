@@ -133,24 +133,22 @@ func DeleteTodoByID(w http.ResponseWriter, r *http.Request) {
 
 	todoID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "Invalid todo id", http.StatusBadRequest)
+		http.Error(w, "Invalid todo id", http.StatusBadGateway)
 		return
 	}
 
-	query := `DELETE FROM todos WHERE id=$1 AND user_id=$2`
-
-	res, err := database.DB.Exec(query, todoID, userID)
+	affected, err := database.DeleteTodoByID(userID, todoID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	aff, _ := res.RowsAffected()
-	if aff == 0 {
+	if affected == 0 {
 		http.Error(w, "Todo not found", http.StatusNotFound)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"msg": "Todo deleted"})
+	utils.RespondJSON(w, http.StatusOK, map[string]string{
+		"msg": "Todo deleted",
+	})
 }

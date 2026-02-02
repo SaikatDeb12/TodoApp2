@@ -190,4 +190,23 @@ func UpdateTodoByID(
 	return affected, nil
 }
 
+func DeleteTodoByID(userID, todoID uuid.UUID) (int64, error) {
+	query := `
+		DELETE FROM todos
+		WHERE id=$1 AND user_id=$2
+	`
+
+	res, err := DB.Exec(query, todoID, userID)
+	if err != nil {
+		return 0, err
+	}
+
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+
+	return affected, nil
+}
+
 // TODO defining struct for all the function using POST method
