@@ -118,3 +118,20 @@ func GetAllTodosByFilter(user_id uuid.UUID, complete bool) ([]models.Todo, error
 
 	return todos, nil
 }
+
+func GetTodoByID(user_ID, todo_ID uuid.UUID) (*models.Todo, error) {
+	SQL := `
+		SELECT id, title, body, created_at, valid_till, complete
+		FROM todos
+		WHERE user_id=$1 AND todo_id=$2
+	`
+	// todos := []models.Todo{}
+	todo := models.Todo{}
+
+	err := DB.QueryRow(SQL, user_ID, todo_ID).Scan(&todo.TodoID, &todo.Title, &todo.Body, &todo.CreatedAt, &todo.ValidTill, &todo.Complete)
+	if err != nil {
+		return nil, err
+	}
+
+	return &todo, nil
+}
