@@ -1,6 +1,9 @@
 package database
 
 import (
+	"encoding/json"
+	"errors"
+	"net/http"
 	"time"
 
 	"github.com/Saikatdeb12/TodoApp2/internal/models"
@@ -135,3 +138,56 @@ func GetTodoByID(user_ID, todo_ID uuid.UUID) (*models.Todo, error) {
 
 	return &todo, nil
 }
+
+type UpdateTodoRequest struct {
+	Title     *string    `json:"title"`
+	Body      *string    `json:"body"`
+	Complete  *bool      `json:"complete"`
+	ValidTill *time.Time `json:"valid_till"`
+}
+
+func ParseUpdateTodoRequest(r *http.Request) (*UpdateTodoRequest, error) {
+	var req UpdateTodoRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return nil, errors.New("invalid payload")
+	}
+	return &req, nil
+}
+
+func UpdateTodoByID(
+	userID uuid.UUID,
+	todoID uuid.UUID,
+	req *UpdateTodoRequest,
+) (int64, error) {
+	query := `
+		UPDATE todos
+		SET
+			title      = COALESCE($1, title),
+			body       = COALESCE($2, body),
+			complete   = COALESCE($3, complete),
+			valid_till = COALESCE($4, valid_till)
+		WHERE id = $5 AND user_id = $6
+	`
+
+	res, err := DB.Exec(
+		query,
+		req.Title,
+		req.Body,
+		req.Complete,
+		req.ValidTill,
+		todoID,
+		userID,
+	)
+	if err != nil {
+		return 0, err
+	}
+
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+
+	return affected, nil
+}
+
+// TODO defining struct for all the function using POST method
