@@ -152,3 +152,28 @@ func DeleteTodoByID(w http.ResponseWriter, r *http.Request) {
 		"msg": "Todo deleted",
 	})
 }
+
+func UpcomingTodosByDate(w http.ResponseWriter, r *http.Request) {
+	userID, err := utils.GetUserID(r.Context())
+	if err != nil {
+		http.Error(w, "Invalid user id", http.StatusUnauthorized)
+		return
+	}
+
+	days := 0
+	if dayParam := r.URL.Query().Get("days"); dayParam != "" {
+		days, err = strconv.Atoi(dayParam)
+		if err != nil {
+			http.Error(w, "Invalid days parameter", http.StatusBadRequest)
+			return
+		}
+	}
+
+	todos, err := database.GetUpcomingTodos(userID, days)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	utils.RespondJSON(w, http.StatusOK, todos)
+}

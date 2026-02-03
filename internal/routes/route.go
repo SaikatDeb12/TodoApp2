@@ -15,6 +15,7 @@ func SetupRouter() *chi.Mux {
 		r.Use(middlewares.Auth)
 		r.Route("/todos", func(r chi.Router) {
 			r.Get("/", handlers.GetTodos)
+			r.Get("/upcoming", handlers.UpcomingTodosByDate)
 			r.Post("/", handlers.CreateTodo)
 
 			r.Route("/{id}", func(r chi.Router) {

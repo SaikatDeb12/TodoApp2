@@ -207,4 +207,41 @@ func DeleteTodoByID(userID, todoID uuid.UUID) (int64, error) {
 	return affected, nil
 }
 
+func GetUpcomingTodos(userID uuid.UUID, days int) ([]models.Todo, error) {
+	query := `
+		SELECT id, title, body, created_at, complete, valid_till
+		FROM todos
+		WHERE user_id = $1
+		  AND complete = false
+		  AND valid_till IS NOT NULL
+		  AND valid_till BETWEEN CURRENT_DATE
+		  AND CURRENT_DATE + ($2 || ' days')::INTERVAL
+		ORDER BY valid_till;
+	`
+
+	rows, err := DB.Query(query, userID, days)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var todos []models.Todo
+	for rows.Next() {
+		var todo models.Todo
+		if err := rows.Scan(
+			&todo.TodoID,
+			&todo.Title,
+			&todo.Body,
+			&todo.CreatedAt,
+			&todo.Complete,
+			&todo.ValidTill,
+		); err != nil {
+			return nil, err
+		}
+		todos = append(todos, todo)
+	}
+
+	return todos, nil
+}
+
 // TODO defining struct for all the function using POST method
