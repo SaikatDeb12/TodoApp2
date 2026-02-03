@@ -73,7 +73,7 @@ func CreateTodoSQL(user_id uuid.UUID, title, body string, valid_till time.Time) 
 
 func GetAllTodos(user_id uuid.UUID) ([]models.Todo, error) {
 	SQL := `
-		SELECT id, title, body, created_at, valid_till
+		SELECT id,user_id, title, body, created_at, valid_till, complete
 		FROM todos
 		WHERE user_id=$1
 	`
@@ -87,7 +87,7 @@ func GetAllTodos(user_id uuid.UUID) ([]models.Todo, error) {
 
 	for rows.Next() {
 		var todo models.Todo
-		if err := rows.Scan(&todo.TodoID, &todo.Title, &todo.Body, &todo.CreatedAt, &todo.ValidTill, &todo.Complete); err != nil {
+		if err := rows.Scan(&todo.TodoID, &todo.UserID, &todo.Title, &todo.Body, &todo.CreatedAt, &todo.ValidTill, &todo.Complete); err != nil {
 			return todos, err
 		}
 		todos = append(todos, todo)
@@ -98,7 +98,7 @@ func GetAllTodos(user_id uuid.UUID) ([]models.Todo, error) {
 
 func GetAllTodosByFilter(user_id uuid.UUID, complete bool) ([]models.Todo, error) {
 	SQL := `
-		SELECT id, title, body, created_at, valid_till
+		SELECT id, title, body, created_at, valid_till, complete
 		FROM todos
 		WHERE user_id=$1 AND complete=$2
 		ORDER BY created_at DESC
@@ -113,7 +113,7 @@ func GetAllTodosByFilter(user_id uuid.UUID, complete bool) ([]models.Todo, error
 
 	for rows.Next() {
 		var todo models.Todo
-		if err := rows.Scan(&todo.TodoID, &todo.Title, &todo.Body, &todo.CreatedAt, &todo.ValidTill); err != nil {
+		if err := rows.Scan(&todo.TodoID, &todo.Title, &todo.Body, &todo.CreatedAt, &todo.ValidTill, &todo.Complete); err != nil {
 			return todos, err
 		}
 		todos = append(todos, todo)
@@ -124,14 +124,14 @@ func GetAllTodosByFilter(user_id uuid.UUID, complete bool) ([]models.Todo, error
 
 func GetTodoByID(user_ID, todo_ID uuid.UUID) (*models.Todo, error) {
 	SQL := `
-		SELECT id, title, body, created_at, valid_till, complete
+		SELECT id, user_id, title, body, created_at, valid_till, complete
 		FROM todos
-		WHERE user_id=$1 AND todo_id=$2
+		WHERE id=$1 AND user_id=$2
 	`
 	// todos := []models.Todo{}
 	todo := models.Todo{}
 
-	err := DB.QueryRow(SQL, user_ID, todo_ID).Scan(&todo.TodoID, &todo.Title, &todo.Body, &todo.CreatedAt, &todo.ValidTill, &todo.Complete)
+	err := DB.QueryRow(SQL, todo_ID, user_ID).Scan(&todo.TodoID, &todo.UserID, &todo.Title, &todo.Body, &todo.CreatedAt, &todo.ValidTill, &todo.Complete)
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +195,6 @@ func DeleteTodoByID(userID, todoID uuid.UUID) (int64, error) {
 		DELETE FROM todos
 		WHERE id=$1 AND user_id=$2
 	`
-
 	res, err := DB.Exec(query, todoID, userID)
 	if err != nil {
 		return 0, err
@@ -205,7 +204,6 @@ func DeleteTodoByID(userID, todoID uuid.UUID) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-
 	return affected, nil
 }
 

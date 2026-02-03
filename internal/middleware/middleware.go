@@ -11,10 +11,10 @@ import (
 
 const UserIDkey string = "user_id"
 
-func Auth(next http.Handler) http.Handler{
-	return http.HandlerFunc(func (w http.ResponseWriter, r *http.Request){
+func Auth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token := r.Header.Get("Authorization")
-		if token == ""{
+		if token == "" {
 			http.Error(w, "Missing token", http.StatusUnauthorized)
 			return
 		}
@@ -33,9 +33,8 @@ func Auth(next http.Handler) http.Handler{
 			FROM sessions
 			WHERE id=$1
 		`
-
 		err = database.DB.QueryRow(query, sessionID).Scan(&userID, &expires)
-		if err != nil || expires.Before(time.Now()){
+		if err != nil || expires.Before(time.Now()) {
 			http.Error(w, "Session expired", http.StatusUnauthorized)
 			return
 		}

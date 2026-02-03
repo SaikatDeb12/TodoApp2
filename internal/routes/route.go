@@ -13,14 +13,16 @@ func SetupRouter() *chi.Mux {
 	router.Post("/auth/logout", handlers.Logout)
 	router.Group(func(r chi.Router) {
 		r.Use(middlewares.Auth)
-		r.Get("/todos", handlers.GetTodos)
-		r.Get("/todos/{id}", handlers.GetTodoByID)
-		r.Get("/todos/complete", handlers.CompletedTodos)
-		r.Get("/todos/incomplete", handlers.InCompleteTodos)
-		r.Get("/todos/upcoming-todos", handlers.UpcomingTodosByDate)
-		r.Post("/todo", handlers.CreateTodo)
-		r.Put("/todo/{id}", handlers.UpdateTodoByID)
-		r.Delete("/todo/{id}", handlers.DeleteTodoByID)
+		r.Route("/todos", func(r chi.Router) {
+			r.Get("/", handlers.GetTodos)
+			r.Post("/", handlers.CreateTodo)
+
+			r.Route("/{id}", func(r chi.Router) {
+				r.Get("/", handlers.GetTodoByID)
+				r.Patch("/", handlers.UpdateTodoByID)
+				r.Delete("/", handlers.DeleteTodoByID)
+			})
+		})
 	})
 
 	return router
