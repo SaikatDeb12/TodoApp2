@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"database/sql"
+	"errors"
 	"net/http"
 	"time"
 
@@ -16,7 +17,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 	if err := utils.ParseBody(r.Body, &req); err != nil {
 		utils.RespondJSON(w, http.StatusBadRequest, map[string]string{
-			"error": "Invalid request payload",
+			"error": "invalid request payload",
 		})
 		return
 	}
@@ -28,32 +29,42 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	exists, err := database.CheckUserExistsByEmail(req.Email)
+	isEmailExists, err := database.CheckUserExistsByEmail(req.Email)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	if exists {
+	if isEmailExists {
 		utils.RespondJSON(w, http.StatusConflict, map[string]string{
-			"error": "User already exists",
+			"error": "user already exists",
 		})
 		return
 	}
 
-	hash, err := utils.HashPassword(req.Password)
+	hashedPassword, err := utils.HashPassword(req.Password)
 	if err != nil {
-		http.Error(w, "Password hashing failed", http.StatusInternalServerError)
+		http.Error(w, "password hashing failed", http.StatusInternalServerError)
 		return
 	}
 
-	if err := database.CreateUser(req.Name, req.Email, hash); err != nil {
+	userID, err := database.CreateUser(req.Name, req.Email, hashedPassword)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	sessionID := uuid.New()
+	sessionExpiresAt := time.Now().Add(24 * time.Hour)
+
+	if err := database.CreateSession(sessionID, userID, sessionExpiresAt); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	utils.RespondJSON(w, http.StatusCreated, map[string]string{
-		"msg": "User registered successfully",
+		"message": "user registered successfully",
+		"session": sessionID.String(),
 	})
 }
 
@@ -61,7 +72,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	var req models.LoginRequest
 
 	if err := utils.ParseBody(r.Body, &req); err != nil {
-		http.Error(w, "Invalid payload", http.StatusBadRequest)
+		http.Error(w, "invalid payload", http.StatusBadRequest)
 		return
 	}
 
@@ -73,8 +84,8 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user, err := database.GetUserAuthByEmail(req.Email)
-	if err == sql.ErrNoRows {
-		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+	if errors.Is(err, sql.ErrNoRows) {
+		http.Error(w, "invalid credentials", http.StatusUnauthorized)
 		return
 	} else if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -82,14 +93,14 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := utils.CheckPassword(user.Password, req.Password); err != nil {
-		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		http.Error(w, "invalid credentials", http.StatusUnauthorized)
 		return
 	}
 
 	sessionID := uuid.New()
-	expires := time.Now().Add(24 * time.Hour)
+	sessionExpiresAt := time.Now().Add(24 * time.Hour)
 
-	if err := database.CreateSession(sessionID, user.UserID, expires); err != nil {
+	if err := database.CreateSession(sessionID, user.UserID, sessionExpiresAt); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -102,28 +113,28 @@ func Login(w http.ResponseWriter, r *http.Request) {
 func Logout(w http.ResponseWriter, r *http.Request) {
 	token := r.Header.Get("Authorization")
 	if token == "" {
-		http.Error(w, "Missing token", http.StatusUnauthorized)
+		http.Error(w, "missing token", http.StatusUnauthorized)
 		return
 	}
 
 	sessionID, err := uuid.Parse(token)
 	if err != nil {
-		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		http.Error(w, "invalid token", http.StatusUnauthorized)
 		return
 	}
 
-	affected, err := database.DeleteSession(sessionID)
+	affected, err := database.ArchiveSession(sessionID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	if affected == 0 {
-		http.Error(w, "Invalid session", http.StatusUnauthorized)
+		http.Error(w, "invalid session", http.StatusUnauthorized)
 		return
 	}
 
 	utils.RespondJSON(w, http.StatusOK, map[string]string{
-		"msg": "Logged out successfully",
+		"message": "Logged out successfully",
 	})
 }

@@ -26,10 +26,10 @@ type Todo struct {
 }
 
 type Session struct {
-	SessionID uuid.UUID `json:"-" db:"session_id"`
-	UserID    uuid.UUID `json:"user_id" db:"user_id"`
-	CreatedAt time.Time `json:"created_at" db:"created_at"`
-	ExpiresAt time.Time `json:"expires_at" db:"expires_at"`
+	SessionID   uuid.UUID `json:"-" db:"session_id"`
+	UserID      uuid.UUID `json:"user_id" db:"user_id"`
+	CreatedAt   time.Time `json:"created_at" db:"created_at"`
+	Archived_at time.Time `json:"archived_at" db:"archived_at"`
 }
 
 type RegisterRequest struct {
@@ -61,4 +61,9 @@ type UpcomingTodosRequest struct {
 	Body      *string    `json:"body"`
 	Complete  *bool      `json:"complete"`
 	ValidTill *time.Time `json:"valid_till"`
+}
+
+type RequestContext struct {
+	UserID    uuid.UUID `json:"userID"`
+	SessionID uuid.UUID `json:"sessionID"`
 }

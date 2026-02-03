@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	middlewares "github.com/Saikatdeb12/TodoApp2/internal/middleware"
+	"github.com/Saikatdeb12/TodoApp2/internal/models"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -21,12 +22,21 @@ func ValidateStruct(payload interface{}) error {
 }
 
 func GetUserID(ctx context.Context) (uuid.UUID, error) {
-	userId, ok := ctx.Value(middlewares.UserIDkey).(uuid.UUID)
-	if !ok {
+	requestContext, err := ctx.Value(middlewares.RequestContextKey).(models.RequestContext)
+	if !err {
 		return uuid.Nil, errors.New("Unauthorized")
 	}
 
-	return userId, nil
+	return requestContext.UserID, nil
+}
+
+func GetSessionID(ctx context.Context) (uuid.UUID, error) {
+	requestContext, err := ctx.Value(middlewares.RequestContextKey).(models.RequestContext)
+	if !err {
+		return uuid.Nil, errors.New("Unauthorized")
+	}
+
+	return requestContext.SessionID, nil
 }
 
 func ParseBody(body io.Reader, out interface{}) error {
@@ -54,7 +64,3 @@ func HashPassword(password string) (string, error) {
 func CheckPassword(hashedPassword, password string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 }
-
-// func ResponseError(w http.ResponseWriter, statusCode int, err error, messageToUser string ){
-// 	log.Fatal()
-// }

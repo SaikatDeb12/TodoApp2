@@ -12,62 +12,108 @@ import (
 
 func CheckUserExistsByEmail(email string) (bool, error) {
 	var exists bool
-	query := `
+	SQL := `
 		SELECT EXISTS(
 			SELECT 1 FROM users 
 			WHERE email=$1 AND archived_at IS NULL
 		)
 	`
-	err := DB.QueryRow(query, email).Scan(&exists)
+	err := DB.Get(&exists, SQL, email)
 	return exists, err
 }
 
-func CreateUser(name, email, password string) error {
-	query := `
+func ValidateUserSession(sessionID string) (uuid.UUID, error) {
+	SQL := `
+		SELECT user_id FROM session 
+		WHERE id=$1 
+		AND archived_at is NULL
+		AND expires_at > NOW()
+	`
+
+	var currentSession models.Session
+
+	err := DB.Get(&currentSession, SQL, sessionID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	return currentSession.UserID, nil
+}
+
+func CreateUser(name, email, password string) (uuid.UUID, error) {
+	SQL := `
 		INSERT INTO users (name, email, password)
 		VALUES ($1, $2, $3)
+		RETURNING id
 	`
-	_, err := DB.Exec(query, name, email, password)
-	return err
+	var userID uuid.UUID
+	err := DB.Get(&userID, SQL, name, email, password)
+	return userID, err
 }
 
 func GetUserAuthByEmail(email string) (models.User, error) {
 	var user models.User
-	query := `SELECT id, password FROM users WHERE email=$1 AND archived_at IS NULL`
+	SQL := `SELECT id, password FROM users WHERE email=$1 AND archived_at IS NULL`
 
-	err := DB.QueryRow(query, email).Scan(&user.UserID, &user.Password)
+	err := DB.Get(&user, SQL, email)
 	return user, err
 }
 
 func CreateSession(sessionID, userID uuid.UUID, expires time.Time) error {
-	query := `
+	SQL := `
 		INSERT INTO sessions (id, user_id, created_at, expires_at)
 		VALUES($1, $2, now(), $3)
 	`
-	_, err := DB.Exec(query, sessionID, userID, expires)
+	_, err := DB.Exec(SQL, sessionID, userID, expires)
 	return err
 }
 
-func DeleteSession(sessionID uuid.UUID) (int64, error) {
-	query := `DELETE FROM sessions WHERE id=$1`
-	res, err := DB.Exec(query, sessionID)
+func ArchiveUser(userID uuid.UUID) (int64, error) {
+	SQL := `
+		UPDATE users
+		SET archived_at = NOW()
+		WHERE id = $1 AND archived_at IS NULL
+	`
+
+	res, err := DB.Exec(SQL, userID)
 	if err != nil {
 		return 0, err
 	}
+
 	return res.RowsAffected()
 }
 
+func ArchiveSession(sessionID uuid.UUID) (int64, error) {
+	SQL := `
+		UPDATE sessions
+		SET archived_at = NOW()
+		WHERE id = $1 AND archived_at IS NULL
+	`
+	res, err := DB.Exec(SQL, sessionID)
+	if err != nil {
+		return 0, err
+	}
+
+	return res.RowsAffected()
+}
+
+// func DeleteSession(sessionID uuid.UUID) (int64, error) {
+// 	SQL := `DELETE FROM sessions WHERE id=$1`
+// 	res, err := DB.Exec(SQL, sessionID)
+// 	if err != nil {
+// 		return 0, err
+// 	}
+// 	return res.RowsAffected()
+// }
+
 func CreateTodoSQL(user_id uuid.UUID, title, body string, valid_till time.Time) (models.Todo, error) {
-	query := `
+	SQL := `
 		INSERT INTO todos (user_id, title, body, valid_till)
 		VALUES ($1, $2, $3, $4)
 		RETURNING id, user_id, title, body, created_at, valid_till, complete
 	`
 	var todo models.Todo
-	err := DB.QueryRow(
-		query, user_id, title, body, valid_till,
-	).Scan(&todo.TodoID, &todo.UserID, &todo.Title, &todo.Body, &todo.CreatedAt, &todo.ValidTill, &todo.Complete)
-
+	err := DB.Get(&todo, SQL, user_id, title, body, valid_till)
 	return todo, err
 }
 
@@ -75,7 +121,7 @@ func GetAllTodos(user_id uuid.UUID) ([]models.Todo, error) {
 	SQL := `
 		SELECT id,user_id, title, body, created_at, valid_till, complete
 		FROM todos
-		WHERE user_id=$1
+		WHERE user_id=$1 AND archived_at is NULL
 	`
 	todos := []models.Todo{}
 	rows, err := DB.Query(SQL, user_id)
@@ -100,7 +146,7 @@ func GetAllTodosByFilter(user_id uuid.UUID, complete bool) ([]models.Todo, error
 	SQL := `
 		SELECT id, title, body, created_at, valid_till, complete
 		FROM todos
-		WHERE user_id=$1 AND complete=$2
+		WHERE user_id=$1 AND complete=$2 AND archived_at IS NULL
 		ORDER BY created_at DESC
 	`
 
@@ -122,16 +168,16 @@ func GetAllTodosByFilter(user_id uuid.UUID, complete bool) ([]models.Todo, error
 	return todos, nil
 }
 
-func GetTodoByID(user_ID, todo_ID uuid.UUID) (*models.Todo, error) {
+func GetTodoByID(userID, todoID uuid.UUID) (*models.Todo, error) {
 	SQL := `
 		SELECT id, user_id, title, body, created_at, valid_till, complete
 		FROM todos
-		WHERE id=$1 AND user_id=$2
+		WHERE id=$1 AND user_id=$2 AND archived_at is NULL;
 	`
-	// todos := []models.Todo{}
 	todo := models.Todo{}
 
-	err := DB.QueryRow(SQL, todo_ID, user_ID).Scan(&todo.TodoID, &todo.UserID, &todo.Title, &todo.Body, &todo.CreatedAt, &todo.ValidTill, &todo.Complete)
+	// err := DB.QueryRow(SQL, todo_ID, user_ID).Scan(&todo.TodoID, &todo.UserID, &todo.Title, &todo.Body, &todo.CreatedAt, &todo.ValidTill, &todo.Complete)
+	err := DB.Get(&todo, SQL, todoID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -192,19 +238,18 @@ func UpdateTodoByID(
 
 func DeleteTodoByID(userID, todoID uuid.UUID) (int64, error) {
 	query := `
-		DELETE FROM todos
-		WHERE id=$1 AND user_id=$2
+		UPDATE todos
+		SET archived_at=NOW()
+		WHERE user_id=$1
+		AND todo_id=$2
+		AND archived_at is NULL
 	`
 	res, err := DB.Exec(query, todoID, userID)
 	if err != nil {
 		return 0, err
 	}
 
-	affected, err := res.RowsAffected()
-	if err != nil {
-		return 0, err
-	}
-	return affected, nil
+	return res.RowsAffected()
 }
 
 func GetUpcomingTodos(userID uuid.UUID, days int) ([]models.Todo, error) {
@@ -216,6 +261,7 @@ func GetUpcomingTodos(userID uuid.UUID, days int) ([]models.Todo, error) {
 		  AND valid_till IS NOT NULL
 		  AND valid_till BETWEEN CURRENT_DATE
 		  AND CURRENT_DATE + ($2 || ' days')::INTERVAL
+		  AND archived_at IS NULL
 		ORDER BY valid_till;
 	`
 

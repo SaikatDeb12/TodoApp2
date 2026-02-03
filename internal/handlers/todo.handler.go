@@ -149,7 +149,7 @@ func DeleteTodoByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.RespondJSON(w, http.StatusOK, map[string]string{
-		"msg": "Todo deleted",
+		"message": "Todo deleted",
 	})
 }
 
@@ -159,7 +159,7 @@ func UpcomingTodosByDate(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid user id", http.StatusUnauthorized)
 		return
 	}
-
+	// exec,
 	days := 0
 	if dayParam := r.URL.Query().Get("days"); dayParam != "" {
 		days, err = strconv.Atoi(dayParam)

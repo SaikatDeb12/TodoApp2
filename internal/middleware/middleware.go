@@ -6,12 +6,13 @@ import (
 	"time"
 
 	"github.com/Saikatdeb12/TodoApp2/internal/database"
+	"github.com/Saikatdeb12/TodoApp2/internal/models"
 	"github.com/google/uuid"
 )
 
-const UserIDkey string = "user_id"
+const RequestContextKey string = "request_context"
 
-func Auth(next http.Handler) http.Handler {
+func Authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token := r.Header.Get("Authorization")
 		if token == "" {
@@ -25,21 +26,22 @@ func Auth(next http.Handler) http.Handler {
 			return
 		}
 
-		var userID uuid.UUID
-		var expires time.Time
+		var sessionExpiresAt time.Time
 
-		query := `
-			SELECT user_id, expires_at
-			FROM sessions
-			WHERE id=$1
-		`
-		err = database.DB.QueryRow(query, sessionID).Scan(&userID, &expires)
-		if err != nil || expires.Before(time.Now()) {
+		// err = database.DB.QueryRow(query, sessionID).Scan(&userID, &sessionExpiresAt)
+		userID, err := database.ValidateUserSession(sessionID.String())
+
+		if err != nil || sessionExpiresAt.Before(time.Now()) {
 			http.Error(w, "Session expired", http.StatusUnauthorized)
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), UserIDkey, userID)
+		requestContext := models.RequestContext{
+			UserID:    userID,
+			SessionID: sessionID,
+		}
+
+		ctx := context.WithValue(r.Context(), RequestContextKey, requestContext)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
