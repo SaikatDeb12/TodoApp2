@@ -1,17 +1,14 @@
 package utils
 
 import (
-	"context"
 	"encoding/json"
-	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"time"
 
-	middlewares "github.com/Saikatdeb12/TodoApp2/internal/middleware"
-	"github.com/Saikatdeb12/TodoApp2/internal/models"
 	"github.com/go-playground/validator/v10"
-	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -19,24 +16,6 @@ var validate = validator.New()
 
 func ValidateStruct(payload interface{}) error {
 	return validate.Struct(payload)
-}
-
-func GetUserID(ctx context.Context) (uuid.UUID, error) {
-	requestContext, err := ctx.Value(middlewares.RequestContextKey).(models.RequestContext)
-	if !err {
-		return uuid.Nil, errors.New("Unauthorized")
-	}
-
-	return requestContext.UserID, nil
-}
-
-func GetSessionID(ctx context.Context) (uuid.UUID, error) {
-	requestContext, err := ctx.Value(middlewares.RequestContextKey).(models.RequestContext)
-	if !err {
-		return uuid.Nil, errors.New("Unauthorized")
-	}
-
-	return requestContext.SessionID, nil
 }
 
 func ParseBody(body io.Reader, out interface{}) error {
@@ -63,4 +42,40 @@ func HashPassword(password string) (string, error) {
 
 func CheckPassword(hashedPassword, password string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
+}
+
+type Error struct {
+	Error      string `json:"error"`
+	Message    string `json:"message"`
+	StatusCode int    `json:"statusCode"`
+}
+
+func RespondError(w http.ResponseWriter, statusCode int, err error, message string) {
+	w.WriteHeader(statusCode)
+	var errStr string
+
+	if err != nil {
+		errStr = err.Error()
+	}
+
+	NewError := Error{
+		Error:      errStr,
+		StatusCode: statusCode,
+		Message:    message,
+	}
+
+	if err := EncodeBody(w, NewError); err != nil {
+		fmt.Printf("error is %v", err)
+	}
+}
+
+func ParseDate(dateStr string) (*time.Time, error) {
+	if dateStr == "" {
+		return nil, nil
+	}
+	parsedDate, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		return nil, err
+	}
+	return &parsedDate, nil
 }

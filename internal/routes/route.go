@@ -20,12 +20,10 @@ func SetupRouter() *chi.Mux {
 		})
 		v1.Post("/auth/register", handlers.Register)
 		v1.Post("/auth/login", handlers.Login)
-		router.Post("/auth/logout", handlers.Logout) // to make it inside the middleware
 		router.Group(func(r chi.Router) {
 			r.Use(middlewares.Authenticate)
 			r.Route("/todos", func(r chi.Router) {
 				r.Get("/", handlers.GetTodos)
-				r.Get("/upcoming", handlers.UpcomingTodosByDate)
 				r.Post("/", handlers.CreateTodo)
 
 				r.Route("/{id}", func(r chi.Router) {
@@ -34,7 +32,7 @@ func SetupRouter() *chi.Mux {
 					r.Delete("/", handlers.DeleteTodoByID)
 				})
 			})
-			r.Route("/user", handlers.DeleteUser)
+			r.Post("/auth/logout", handlers.Logout)
 		})
 	})
 

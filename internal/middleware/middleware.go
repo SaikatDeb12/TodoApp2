@@ -3,17 +3,23 @@ package middlewares
 import (
 	"context"
 	"net/http"
-	"time"
 
 	"github.com/Saikatdeb12/TodoApp2/internal/database"
 	"github.com/Saikatdeb12/TodoApp2/internal/models"
 	"github.com/google/uuid"
 )
 
-const RequestContextKey string = "request_context"
+type ContextKeys struct{}
+
+var RequestContextKey = ContextKeys{}
+
+func UserContext(r *http.Request) *models.RequestContext {
+	user, _ := r.Context().Value(RequestContextKey).(*models.RequestContext)
+	return user
+}
 
 func Authenticate(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { // HOC
 		token := r.Header.Get("Authorization")
 		if token == "" {
 			http.Error(w, "Missing token", http.StatusUnauthorized)
@@ -26,15 +32,12 @@ func Authenticate(next http.Handler) http.Handler {
 			return
 		}
 
-		var sessionExpiresAt time.Time
+		userID, err := database.ValidateUserSession(sessionID)
 
-		// err = database.DB.QueryRow(query, sessionID).Scan(&userID, &sessionExpiresAt)
-		userID, err := database.ValidateUserSession(sessionID.String())
-
-		if err != nil || sessionExpiresAt.Before(time.Now()) {
-			http.Error(w, "Session expired", http.StatusUnauthorized)
-			return
-		}
+		// if err != nil || sessionExpiresAt.Before(time.Now()) {
+		// 	http.Error(w, "Session expired", http.StatusUnauthorized)
+		// 	return
+		// }
 
 		requestContext := models.RequestContext{
 			UserID:    userID,

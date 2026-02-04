@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Saikatdeb12/TodoApp2/internal/database"
+	middlewares "github.com/Saikatdeb12/TodoApp2/internal/middleware"
 	"github.com/Saikatdeb12/TodoApp2/internal/models"
 	"github.com/Saikatdeb12/TodoApp2/internal/utils"
 	"github.com/google/uuid"
@@ -23,6 +24,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := utils.ValidateStruct(&req); err != nil {
+		// send actual error
 		utils.RespondJSON(w, http.StatusBadRequest, map[string]string{
 			"validation_error": err.Error(),
 		})
@@ -111,25 +113,18 @@ func Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func Logout(w http.ResponseWriter, r *http.Request) {
-	token := r.Header.Get("Authorization")
-	if token == "" {
-		http.Error(w, "missing token", http.StatusUnauthorized)
-		return
-	}
+	userContext := middlewares.UserContext(r)
+	sessionID := userContext.SessionID
 
-	sessionID, err := uuid.Parse(token)
+	// no need of affected rows
+	affectedRows, err := database.ArchiveSession(sessionID)
 	if err != nil {
-		http.Error(w, "invalid token", http.StatusUnauthorized)
-		return
-	}
-
-	affected, err := database.ArchiveSession(sessionID)
-	if err != nil {
+		// utils respond error
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	if affected == 0 {
+	if affectedRows == 0 {
 		http.Error(w, "invalid session", http.StatusUnauthorized)
 		return
 	}
