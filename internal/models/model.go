@@ -52,7 +52,7 @@ type CreateTodoRequest struct {
 type UpdateTodoRequest struct {
 	Title     *string    `json:"title" validate:"omitempty,min=3,max=100"`
 	Body      *string    `json:"body" validate:"omitempty"`
-	Status    *bool      `json:"status"`
+	Status    *string    `json:"status"`
 	ValidTill *time.Time `json:"valid_till"`
 }
 
@@ -66,4 +66,10 @@ type UpcomingTodosRequest struct {
 type RequestContext struct {
 	UserID    uuid.UUID `json:"userID"`
 	SessionID uuid.UUID `json:"sessionID"`
+}
+
+type Error struct {
+	Error      string `json:"error"`
+	Message    string `json:"message"`
+	StatusCode int    `json:"statusCode"`
 }

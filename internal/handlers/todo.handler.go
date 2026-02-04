@@ -27,7 +27,7 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// no need to send created todo in response
+	// can do without sending created todo in response
 	todo.UserID = userID
 	todo.Title = req.Title
 	todo.Body = req.Body
@@ -79,18 +79,27 @@ func GetTodoByID(w http.ResponseWriter, r *http.Request) {
 }
 
 func UpdateTodoByID(w http.ResponseWriter, r *http.Request) {
-	userContext := middlewares.UserContext(r)
-	userID := userContext.UserID
-
 	todoID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		utils.RespondError(w, http.StatusBadRequest, err, "invalid todo id")
 		return
 	}
 
-	// parse body
-	var todo models.Todo
-	err = database.UpdateTodoById(todo.Title, todo.Body, todo.Status, todo.ValidTill, todoID, userID)
+	var todo models.UpdateTodoRequest
+	if err := utils.ParseBody(r.Body, &todo); err != nil {
+		utils.RespondError(w, http.StatusBadRequest, err, "invalid request body")
+		return
+	}
+
+	if err := utils.ValidateStruct(todo); err != nil {
+		utils.RespondError(w, http.StatusBadRequest, err, "validation failed")
+		return
+	}
+
+	userContext := middlewares.UserContext(r)
+	userID := userContext.UserID
+
+	err = database.UpdateTodoById(*todo.Title, *todo.Body, *todo.Status, *todo.ValidTill, todoID, userID)
 	if err != nil {
 		utils.RespondError(w, http.StatusInternalServerError, err, "invalid payload")
 		return
@@ -126,25 +135,3 @@ func DeleteTodoByID(w http.ResponseWriter, r *http.Request) {
 		"message": "Todo deleted",
 	})
 }
-
-// func UpcomingTodosByDate(w http.ResponseWriter, r *http.Request) {
-// 	userContext := middlewares.UserContext(r)
-// 	userID := userContext.UserID
-// 	// exec,
-// 	days := 0
-// 	if dayParam := r.URL.Query().Get("days"); dayParam != "" {
-// 		days, err = strconv.Atoi(dayParam)
-// 		if err != nil {
-// 			utils.RespondError(w, http.StatusBadRequest, err, "invalid days parameter")
-// 			return
-// 		}
-// 	}
-//
-// 	todos, err := database.GetUpcomingTodos(userID, days)
-// 	if err != nil {
-// 		utils.RespondError(w, http.StatusInternalServerError, err, "invalid payload")
-// 		return
-// 	}
-//
-// 	utils.RespondJSON(w, http.StatusOK, todos)
-// }

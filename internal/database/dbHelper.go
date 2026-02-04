@@ -9,16 +9,22 @@ import (
 )
 
 func CheckUserExistsByEmail(email string) (bool, error) {
-	var exists bool
-	// select count(*)
+	var id int
 	SQL := `
-		SELECT EXISTS(
-			SELECT 1 FROM users 
-			WHERE email=$1 AND archived_at IS NULL
-		)
+		SELECT * FROM users
+		WHERE email = $1
+		AND archived_at IS NULL
+		LIMIT 1
 	`
-	err := DB.Get(&exists, SQL, email)
-	return exists, err
+	err := DB.Get(&id, SQL, email)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return false, nil
+		}
+		return false, err
+	}
+
+	return true, nil
 }
 
 func ValidateUserSession(sessionID uuid.UUID) (uuid.UUID, error) {
@@ -58,14 +64,18 @@ func GetUserAuthByEmail(email string) (models.User, error) {
 	return user, err
 }
 
-func CreateSession(sessionID, userID uuid.UUID, expires time.Time) error {
-	// session id
+func CreateSession(userID uuid.UUID) (string, error) {
 	SQL := `
 		INSERT INTO sessions (id, user_id, created_at, expires_at)
 		VALUES($1, $2, now(), $3)
+		RETURNING id;
 	`
-	_, err := DB.Exec(SQL, sessionID, userID, expires)
-	return err
+	var sessionID string
+	err := DB.Get(&sessionID, SQL, userID)
+	if err != nil {
+		return "", err
+	}
+	return sessionID, nil
 }
 
 func ArchiveUser(userID uuid.UUID) (int64, error) {
@@ -97,15 +107,6 @@ func ArchiveSession(sessionID uuid.UUID) (int64, error) {
 	return res.RowsAffected()
 }
 
-// func DeleteSession(sessionID uuid.UUID) (int64, error) {
-// 	SQL := `DELETE FROM sessions WHERE id=$1`
-// 	res, err := DB.Exec(SQL, sessionID)
-// 	if err != nil {
-// 		return 0, err
-// 	}
-// 	return res.RowsAffected()
-// }
-
 func CreateTodoSQL(user_id uuid.UUID, title, body string, valid_till time.Time) (models.Todo, error) {
 	SQL := `
 		INSERT INTO todos (user_id, title, body, valid_till)
@@ -118,7 +119,7 @@ func CreateTodoSQL(user_id uuid.UUID, title, body string, valid_till time.Time) 
 }
 
 func GetAllTodos(userID, status string, selectedDate *time.Time) ([]models.Todo, error) {
-	SQL := `SELECT todo_id, title, description, status, deadline, created_at
+	SQL := `SELECT todo_id, title, description, status, valid_till, created_at
              FROM todos
              WHERE user_id = $1
                AND archived_at IS NULL
@@ -127,7 +128,7 @@ func GetAllTodos(userID, status string, selectedDate *time.Time) ([]models.Todo,
                    OR status = $2::todo_status
                   )
                AND (
-                   $3::timestamp IS NULL OR deadline <= $3::timestamp
+                   $3::timestamp IS NULL OR valid_till <= $3::timestamp
                   )
                order by created_at desc;`
 
@@ -193,17 +194,10 @@ func UpdateTodoById(name, description string, status string, expiringAt time.Tim
 			SET name=$1,description=$2,status=$3,expiring_at=$4
 			WHERE id=$5 
 			and user_id=$6;`
-	result, err := DB.Exec(
+	_, err := DB.Exec(
 		SQL, name, description, status, expiringAt, todoID, userID)
 	if err != nil {
 		return err
-	}
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if rowsAffected == 0 {
-		return sql.ErrNoRows
 	}
 	return nil
 }
@@ -224,42 +218,40 @@ func DeleteTodoByID(userID, todoID uuid.UUID) (int64, error) {
 	return res.RowsAffected()
 }
 
-func GetUpcomingTodos(userID uuid.UUID, days int) ([]models.Todo, error) {
-	query := `
-		SELECT id, title, body, created_at, status, valid_till
-		FROM todos
-		WHERE user_id = $1
-		  AND status = 'incomplete'
-		  AND valid_till IS NOT NULL
-		  AND valid_till BETWEEN CURRENT_DATE
-		  AND CURRENT_DATE + ($2 || ' days')::INTERVAL
-		  AND archived_at IS NULL
-		ORDER BY valid_till;
-	`
-
-	rows, err := DB.Query(query, userID, days)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var todos []models.Todo
-	for rows.Next() {
-		var todo models.Todo
-		if err := rows.Scan(
-			&todo.TodoID,
-			&todo.Title,
-			&todo.Body,
-			&todo.CreatedAt,
-			&todo.Status,
-			&todo.ValidTill,
-		); err != nil {
-			return nil, err
-		}
-		todos = append(todos, todo)
-	}
-
-	return todos, nil
-}
-
-// TODO defining struct for all the function using POST method
+// func GetUpcomingTodos(userID uuid.UUID, days int) ([]models.Todo, error) {
+// 	query := `
+// 		SELECT id, title, body, created_at, status, valid_till
+// 		FROM todos
+// 		WHERE user_id = $1
+// 		  AND status = 'incomplete'
+// 		  AND valid_till IS NOT NULL
+// 		  AND valid_till BETWEEN CURRENT_DATE
+// 		  AND CURRENT_DATE + ($2 || ' days')::INTERVAL
+// 		  AND archived_at IS NULL
+// 		ORDER BY valid_till;
+// 	`
+//
+// 	rows, err := DB.Query(query, userID, days)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	defer rows.Close()
+//
+// 	var todos []models.Todo
+// 	for rows.Next() {
+// 		var todo models.Todo
+// 		if err := rows.Scan(
+// 			&todo.TodoID,
+// 			&todo.Title,
+// 			&todo.Body,
+// 			&todo.CreatedAt,
+// 			&todo.Status,
+// 			&todo.ValidTill,
+// 		); err != nil {
+// 			return nil, err
+// 		}
+// 		todos = append(todos, todo)
+// 	}
+//
+// 	return todos, nil
+// }

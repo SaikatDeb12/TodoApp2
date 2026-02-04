@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Saikatdeb12/TodoApp2/internal/models"
 	"github.com/go-playground/validator/v10"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -44,12 +45,6 @@ func CheckPassword(hashedPassword, password string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 }
 
-type Error struct {
-	Error      string `json:"error"`
-	Message    string `json:"message"`
-	StatusCode int    `json:"statusCode"`
-}
-
 func RespondError(w http.ResponseWriter, statusCode int, err error, message string) {
 	w.WriteHeader(statusCode)
 	var errStr string
@@ -58,7 +53,7 @@ func RespondError(w http.ResponseWriter, statusCode int, err error, message stri
 		errStr = err.Error()
 	}
 
-	NewError := Error{
+	NewError := models.Error{
 		Error:      errStr,
 		StatusCode: statusCode,
 		Message:    message,
