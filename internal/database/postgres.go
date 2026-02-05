@@ -2,27 +2,16 @@ package database
 
 import (
 	"fmt"
-	"log"
-	"os"
 
+	"github.com/Saikatdeb12/TodoApp2/internal/utils"
 	"github.com/jmoiron/sqlx"
-	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
 var DB *sqlx.DB
 
-func GoDotEnvVariable(key string) string {
-	err := godotenv.Load(".env")
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-
-	return os.Getenv(key)
-}
-
 func Connect() {
-	connStr := GoDotEnvVariable("POSTGRESQL_URL")
+	connStr := utils.GoDotEnvVariable("POSTGRESQL_URL")
 	var err error
 	DB, err = sqlx.Connect("postgres", connStr)
 	if err != nil {

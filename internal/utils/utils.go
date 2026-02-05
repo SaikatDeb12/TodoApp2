@@ -6,14 +6,30 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/Saikatdeb12/TodoApp2/internal/models"
 	"github.com/go-playground/validator/v10"
+	"github.com/golang-jwt/jwt"
+	"github.com/joho/godotenv"
 	"golang.org/x/crypto/bcrypt"
 )
 
-var validate = validator.New()
+var (
+	validate  = validator.New()
+	SecretKey = GoDotEnvVariable("JWT_SECRET_KEY")
+)
+
+func GoDotEnvVariable(key string) string {
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Printf("error loading .env file")
+		return ""
+	}
+
+	return os.Getenv(key)
+}
 
 func ValidateStruct(payload interface{}) error {
 	return validate.Struct(payload)
@@ -31,7 +47,7 @@ func RespondJSON(w http.ResponseWriter, statusCode int, body interface{}) {
 	w.WriteHeader(statusCode)
 	if body != nil {
 		if err := EncodeBody(w, body); err != nil {
-			log.Printf("Failed with error: %+v", err)
+			log.Printf("failed with error: %+v", err)
 		}
 	}
 }
@@ -73,4 +89,15 @@ func ParseDate(dateStr string) (*time.Time, error) {
 		return nil, err
 	}
 	return &parsedDate, nil
+}
+
+func GenerateJWT(userID, sessionID string) (string, error) {
+	claims := jwt.MapClaims{
+		"userID":    userID,
+		"sessionID": sessionID,
+		"expiresAt": time.Now().Add(time.Hour * 24).Unix(),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
+	return token.SignedString([]byte(SecretKey))
 }

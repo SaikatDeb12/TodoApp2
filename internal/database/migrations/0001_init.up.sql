@@ -24,7 +24,7 @@ CREATE TYPE todo_status as enum('incomplete', 'complete')
 
 CREATE TABLE IF NOT EXISTS todos (
     id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id    uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id    uuid NOT NULL REFERENCES users(id),
     title       text NOT NULL,
     body        text NOT NULL,
     created_at  timestamptz NOT NULL DEFAULT now(),
@@ -37,7 +37,7 @@ CREATE INDEX idx_todos_user_id
 
 CREATE TABLE IF NOT EXISTS sessions (
     id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id    uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id    uuid NOT NULL REFERENCES users(id),
     created_at  timestamptz NOT NULL DEFAULT now(),
     archived_at  timestamptz
 );

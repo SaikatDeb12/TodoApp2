@@ -3,12 +3,11 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/Saikatdeb12/TodoApp2/internal/database"
+	dbhelper "github.com/Saikatdeb12/TodoApp2/internal/database/dbHelper"
 	middlewares "github.com/Saikatdeb12/TodoApp2/internal/middleware"
 	"github.com/Saikatdeb12/TodoApp2/internal/models"
 	"github.com/Saikatdeb12/TodoApp2/internal/utils"
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 )
 
 func CreateTodo(w http.ResponseWriter, r *http.Request) {
@@ -21,7 +20,7 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 	userContext := middlewares.UserContext(r)
 	userID := userContext.UserID
 	var todo models.Todo
-	todo, err := database.CreateTodoSQL(userID, req.Title, req.Body, req.ValidTill)
+	todo, err := dbhelper.CreateTodoSQL(userID, req.Title, req.Body, req.ValidTill)
 	if err != nil {
 		utils.RespondError(w, http.StatusInternalServerError, err, "internal server error")
 		return
@@ -49,7 +48,7 @@ func GetTodos(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	todos, getErr := database.GetAllTodos(userID.String(), status, date)
+	todos, getErr := dbhelper.GetAllTodos(userID, status, date)
 
 	if getErr != nil {
 		utils.RespondError(w, http.StatusInternalServerError, getErr, "failed to fetch todos")
@@ -63,13 +62,9 @@ func GetTodoByID(w http.ResponseWriter, r *http.Request) {
 	userContext := middlewares.UserContext(r)
 	userID := userContext.UserID
 
-	todoID, err := uuid.Parse(chi.URLParam(r, "id"))
-	if err != nil {
-		utils.RespondError(w, http.StatusInternalServerError, err, "valid todo ID")
-		return
-	}
+	todoID := chi.URLParam(r, "id")
 
-	todo, err := database.GetTodoByID(userID, todoID)
+	todo, err := dbhelper.GetTodoByID(userID, todoID)
 	if err != nil {
 		utils.RespondError(w, http.StatusNotFound, err, "todo not found")
 		return
@@ -79,11 +74,7 @@ func GetTodoByID(w http.ResponseWriter, r *http.Request) {
 }
 
 func UpdateTodoByID(w http.ResponseWriter, r *http.Request) {
-	todoID, err := uuid.Parse(chi.URLParam(r, "id"))
-	if err != nil {
-		utils.RespondError(w, http.StatusBadRequest, err, "invalid todo id")
-		return
-	}
+	todoID := chi.URLParam(r, "id")
 
 	var todo models.UpdateTodoRequest
 	if err := utils.ParseBody(r.Body, &todo); err != nil {
@@ -99,7 +90,7 @@ func UpdateTodoByID(w http.ResponseWriter, r *http.Request) {
 	userContext := middlewares.UserContext(r)
 	userID := userContext.UserID
 
-	err = database.UpdateTodoById(*todo.Title, *todo.Body, *todo.Status, *todo.ValidTill, todoID, userID)
+	err := dbhelper.UpdateTodoById(*todo.Title, *todo.Body, *todo.Status, *todo.ValidTill, todoID, userID)
 	if err != nil {
 		utils.RespondError(w, http.StatusInternalServerError, err, "invalid payload")
 		return
@@ -114,13 +105,9 @@ func DeleteTodoByID(w http.ResponseWriter, r *http.Request) {
 	userContext := middlewares.UserContext(r)
 	userID := userContext.UserID
 
-	todoID, err := uuid.Parse(chi.URLParam(r, "id"))
-	if err != nil {
-		utils.RespondError(w, http.StatusBadRequest, err, "invalid todo id")
-		return
-	}
+	todoID := chi.URLParam(r, "id")
 
-	affected, err := database.DeleteTodoByID(userID, todoID)
+	affected, err := dbhelper.DeleteTodoByID(userID, todoID)
 	if err != nil {
 		utils.RespondError(w, http.StatusBadRequest, err, "delete operation failed")
 		return

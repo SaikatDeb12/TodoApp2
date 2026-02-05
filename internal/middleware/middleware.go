@@ -1,12 +1,14 @@
-package middlewares
+package middleware
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
-	"github.com/Saikatdeb12/TodoApp2/internal/database"
+	dbhelper "github.com/Saikatdeb12/TodoApp2/internal/database/dbHelper"
 	"github.com/Saikatdeb12/TodoApp2/internal/models"
-	"github.com/google/uuid"
+	"github.com/Saikatdeb12/TodoApp2/internal/utils"
+	"github.com/golang-jwt/jwt"
 )
 
 type ContextKeys struct{}
@@ -19,29 +21,41 @@ func UserContext(r *http.Request) *models.RequestContext {
 }
 
 func Authenticate(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { // HOC
-		token := r.Header.Get("Authorization")
-		if token == "" {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { // HOF
+		tokenString := r.Header.Get("Authorization")
+		if tokenString == "" {
 			http.Error(w, "Missing token", http.StatusUnauthorized)
 			return
 		}
 
-		sessionID, err := uuid.Parse(token)
+		userID, err := dbhelper.ValidateUserSession(tokenString)
 		if err != nil {
-			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			utils.RespondError(w, http.StatusUnauthorized, err, "session expired")
 			return
 		}
 
-		userID, err := database.ValidateUserSession(sessionID)
+		token, parseErr := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, errors.New("invalid signing method")
+			}
+			return []byte(utils.SecretKey), nil
+		})
 
-		// if err != nil || sessionExpiresAt.Before(time.Now()) {
-		// 	http.Error(w, "Session expired", http.StatusUnauthorized)
-		// 	return
-		// }
+		if parseErr != nil || !token.Valid {
+			utils.RespondError(w, http.StatusUnauthorized, parseErr, "invalid token")
+			return
+		}
+
+		claimValues, ok := token.Claims.(jwt.MapClaims)
+
+		if !ok || !token.Valid {
+			utils.RespondError(w, http.StatusUnauthorized, nil, "invalid token claims")
+			return
+		}
 
 		requestContext := models.RequestContext{
 			UserID:    userID,
-			SessionID: sessionID,
+			SessionID: claimValues["sessionId"].(string),
 		}
 
 		ctx := context.WithValue(r.Context(), RequestContextKey, requestContext)

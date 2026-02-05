@@ -5,11 +5,13 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/Saikatdeb12/TodoApp2/internal/database"
+	dbhelper "github.com/Saikatdeb12/TodoApp2/internal/database/dbHelper"
 	middlewares "github.com/Saikatdeb12/TodoApp2/internal/middleware"
 	"github.com/Saikatdeb12/TodoApp2/internal/models"
 	"github.com/Saikatdeb12/TodoApp2/internal/utils"
 )
+
+var SecretKey = utils.GoDotEnvVariable("JWT_SECRET_KEY")
 
 func Register(w http.ResponseWriter, r *http.Request) {
 	var req models.RegisterRequest
@@ -24,7 +26,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isEmailExists, err := database.CheckUserExistsByEmail(req.Email)
+	isEmailExists, err := dbhelper.CheckUserExistsByEmail(req.Email)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -43,21 +45,27 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, err := database.CreateUser(req.Name, req.Email, hashedPassword)
+	userID, err := dbhelper.CreateUser(req.Name, req.Email, hashedPassword)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	sessionID, err := database.CreateSession(userID)
+	sessionID, err := dbhelper.CreateSession(userID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	token, err := utils.GenerateJWT(userID, sessionID)
+	if err != nil {
+		utils.RespondError(w, http.StatusInternalServerError, err, "error while generating token")
 		return
 	}
 
 	utils.RespondJSON(w, http.StatusCreated, map[string]string{
 		"message": "user registered successfully",
-		"session": sessionID,
+		"token":   token,
 	})
 }
 
@@ -75,7 +83,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := database.GetUserAuthByEmail(req.Email)
+	user, err := dbhelper.GetUserAuthByEmail(req.Email)
 	if errors.Is(err, sql.ErrNoRows) {
 		http.Error(w, "invalid credentials", http.StatusUnauthorized)
 		return
@@ -90,7 +98,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	userID := user.UserID
-	sessionID, err := database.CreateSession(userID)
+	sessionID, err := dbhelper.CreateSession(userID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -106,7 +114,7 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 	userContext := middlewares.UserContext(r)
 	sessionID := userContext.SessionID
 
-	affectedRows, err := database.ArchiveSession(sessionID)
+	affectedRows, err := dbhelper.ArchiveSession(sessionID)
 	if err != nil {
 		utils.RespondError(w, http.StatusInternalServerError, err, "no session found")
 		return
