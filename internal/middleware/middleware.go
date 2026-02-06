@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 
-	dbhelper "github.com/Saikatdeb12/TodoApp2/internal/database/dbHelper"
 	"github.com/Saikatdeb12/TodoApp2/internal/models"
 	"github.com/Saikatdeb12/TodoApp2/internal/utils"
 	"github.com/golang-jwt/jwt"
@@ -22,20 +22,22 @@ func UserContext(r *http.Request) *models.RequestContext {
 
 func Authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { // HOF
-		tokenString := r.Header.Get("Authorization")
-		if tokenString == "" {
-			http.Error(w, "Missing token", http.StatusUnauthorized)
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			utils.RespondError(w, http.StatusUnauthorized, nil, "missing authorization header")
 			return
 		}
 
-		userID, err := dbhelper.ValidateUserSession(tokenString)
-		if err != nil {
-			utils.RespondError(w, http.StatusUnauthorized, err, "session expired")
+		const bearerPrefix = "Bearer "
+		if !strings.HasPrefix(authHeader, bearerPrefix) {
+			utils.RespondError(w, http.StatusUnauthorized, nil, "invalid authorization format")
 			return
 		}
+
+		tokenString := strings.TrimPrefix(authHeader, bearerPrefix)
 
 		token, parseErr := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			if _, err := token.Method.(*jwt.SigningMethodHMAC); !err {
 				return nil, errors.New("invalid signing method")
 			}
 			return []byte(utils.SecretKey), nil
@@ -46,16 +48,26 @@ func Authenticate(next http.Handler) http.Handler {
 			return
 		}
 
-		claimValues, ok := token.Claims.(jwt.MapClaims)
+		claimValues, err := token.Claims.(jwt.MapClaims)
 
-		if !ok || !token.Valid {
+		if !err {
 			utils.RespondError(w, http.StatusUnauthorized, nil, "invalid token claims")
 			return
 		}
 
+		userID, err := claimValues["user_id"].(string)
+		if !err {
+			utils.RespondError(w, http.StatusUnauthorized, nil, "invalid user id")
+		}
+
+		sessionID, err := claimValues["session_id"].(string)
+		if !err {
+			utils.RespondError(w, http.StatusUnauthorized, nil, "invalid session id")
+		}
+
 		requestContext := models.RequestContext{
 			UserID:    userID,
-			SessionID: claimValues["sessionId"].(string),
+			SessionID: sessionID,
 		}
 
 		ctx := context.WithValue(r.Context(), RequestContextKey, requestContext)

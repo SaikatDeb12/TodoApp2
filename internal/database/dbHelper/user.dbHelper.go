@@ -31,17 +31,18 @@ func ValidateUserSession(sessionID string) (string, error) {
 		SELECT user_id FROM session 
 		WHERE id=$1 
 		AND archived_at is NULL
-		AND archived_at > NOW()
 	`
 
-	var currentSession models.Session
+	// var currentSession models.Session
+	var userID string
 
-	err := database.DB.Get(&currentSession, SQL, sessionID)
+	err := database.DB.Get(&userID, SQL, sessionID)
 	if err != nil {
 		return "", err
 	}
 
-	return currentSession.UserID, nil
+	// return currentSession.UserID, nil
+	return userID, nil
 }
 
 func CreateUser(name, email, password string) (string, error) {

@@ -93,11 +93,13 @@ func ParseDate(dateStr string) (*time.Time, error) {
 
 func GenerateJWT(userID, sessionID string) (string, error) {
 	claims := jwt.MapClaims{
-		"userID":    userID,
-		"sessionID": sessionID,
-		"expiresAt": time.Now().Add(time.Hour * 24).Unix(),
+		"user_id":    userID,
+		"session_id": sessionID,
+		"exp":        time.Now().Add(time.Hour * 24).Unix(), // expiration time
+		// also iss : is user
+		// iat : issued at
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(SecretKey))
 }

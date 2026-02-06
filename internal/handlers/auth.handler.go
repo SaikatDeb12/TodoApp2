@@ -11,8 +11,6 @@ import (
 	"github.com/Saikatdeb12/TodoApp2/internal/utils"
 )
 
-var SecretKey = utils.GoDotEnvVariable("JWT_SECRET_KEY")
-
 func Register(w http.ResponseWriter, r *http.Request) {
 	var req models.RegisterRequest
 
@@ -84,29 +82,36 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user, err := dbhelper.GetUserAuthByEmail(req.Email)
-	if errors.Is(err, sql.ErrNoRows) {
-		http.Error(w, "invalid credentials", http.StatusUnauthorized)
-		return
-	} else if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			utils.RespondError(w, http.StatusUnauthorized, err, "invalid credentials")
+			return
+		}
+		utils.RespondError(w, http.StatusInternalServerError, err, "no users fetched")
 	}
 
 	if err := utils.CheckPassword(user.Password, req.Password); err != nil {
-		http.Error(w, "invalid credentials", http.StatusUnauthorized)
+		utils.RespondError(w, http.StatusUnauthorized, err, "invalid credentials")
 		return
 	}
 
 	userID := user.UserID
+
 	sessionID, err := dbhelper.CreateSession(userID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.RespondError(w, http.StatusInternalServerError, err, "failed to create session")
+		return
+	}
+
+	token, err := utils.GenerateJWT(userID, sessionID)
+	if err != nil {
+		utils.RespondError(w, http.StatusInternalServerError, err, "error while generating token")
 		return
 	}
 
 	utils.RespondJSON(w, http.StatusCreated, map[string]string{
 		"message": "user logged in successfully",
-		"session": sessionID,
+		"token":   token,
 	})
 }
 
