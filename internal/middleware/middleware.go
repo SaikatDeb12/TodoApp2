@@ -15,9 +15,9 @@ type ContextKeys struct{}
 
 var RequestContextKey = ContextKeys{}
 
-func UserContext(r *http.Request) *models.RequestContext {
-	user, _ := r.Context().Value(RequestContextKey).(*models.RequestContext)
-	return user
+func UserContext(r *http.Request) (models.RequestContext, bool) {
+	user, ok := r.Context().Value(RequestContextKey).(models.RequestContext)
+	return user, ok
 }
 
 func Authenticate(next http.Handler) http.Handler {

@@ -26,7 +26,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 	isEmailExists, err := dbhelper.CheckUserExistsByEmail(req.Email)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.RespondError(w, http.StatusInternalServerError, err, "email already exists")
 		return
 	}
 
@@ -39,19 +39,19 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 	hashedPassword, err := utils.HashPassword(req.Password)
 	if err != nil {
-		http.Error(w, "password hashing failed", http.StatusInternalServerError)
+		utils.RespondError(w, http.StatusInternalServerError, err, "password hasing failed")
 		return
 	}
 
 	userID, err := dbhelper.CreateUser(req.Name, req.Email, hashedPassword)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.RespondError(w, http.StatusInternalServerError, err, "failed to create user")
 		return
 	}
 
 	sessionID, err := dbhelper.CreateSession(userID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.RespondError(w, http.StatusInternalServerError, err, "failed to create session")
 		return
 	}
 
@@ -70,7 +70,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 func Login(w http.ResponseWriter, r *http.Request) {
 	var req models.LoginRequest
 	if err := utils.ParseBody(r.Body, &req); err != nil {
-		http.Error(w, "invalid payload", http.StatusBadRequest)
+		utils.RespondError(w, http.StatusBadRequest, err, "invalid payload")
 		return
 	}
 
@@ -116,17 +116,15 @@ func Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func Logout(w http.ResponseWriter, r *http.Request) {
-	userContext := middlewares.UserContext(r)
+	userContext, ok := middlewares.UserContext(r)
+	if !ok {
+		utils.RespondError(w, http.StatusUnauthorized, nil, "unauthorized")
+	}
 	sessionID := userContext.SessionID
 
-	affectedRows, err := dbhelper.ArchiveSession(sessionID)
+	err := dbhelper.ArchiveSession(sessionID)
 	if err != nil {
 		utils.RespondError(w, http.StatusInternalServerError, err, "no session found")
-		return
-	}
-
-	if affectedRows == 0 {
-		utils.RespondError(w, http.StatusUnauthorized, err, "invalid session")
 		return
 	}
 

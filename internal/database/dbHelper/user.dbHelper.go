@@ -10,10 +10,9 @@ import (
 func CheckUserExistsByEmail(email string) (bool, error) {
 	var id int
 	SQL := `
-		SELECT * FROM users
+		SELECT id FROM users
 		WHERE email = $1
 		AND archived_at IS NULL
-		LIMIT 1
 	`
 	err := database.DB.Get(&id, SQL, email)
 	if err != nil {

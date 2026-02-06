@@ -7,18 +7,14 @@ import (
 	"github.com/Saikatdeb12/TodoApp2/internal/models"
 )
 
-func ArchiveSession(sessionID string) (int64, error) {
+func ArchiveSession(sessionID string) error {
 	SQL := `
 		UPDATE sessions
 		SET archived_at = NOW()
 		WHERE id = $1 AND archived_at IS NULL
 	`
-	res, err := database.DB.Exec(SQL, sessionID)
-	if err != nil {
-		return 0, err
-	}
-
-	return res.RowsAffected()
+	_, err := database.DB.Exec(SQL, sessionID)
+	return err
 }
 
 func CreateTodoSQL(user_id string, title, body string, valid_till time.Time) (models.Todo, error) {
@@ -32,25 +28,35 @@ func CreateTodoSQL(user_id string, title, body string, valid_till time.Time) (mo
 	return todo, err
 }
 
-func GetAllTodos(userID, status string, selectedDate *time.Time) ([]models.Todo, error) {
-	SQL := `SELECT todo_id, title, description, status, valid_till, created_at
-             FROM todos
-             WHERE user_id = $1
-               AND archived_at IS NULL
-               AND (
-                   $2 = ''
-                   OR status = $2::todo_status
-                  )
-               AND (
-                   $3::timestamp IS NULL OR valid_till <= $3::timestamp
-                  )
-               order by created_at desc;`
-
-	args := []interface{}{userID, status, selectedDate}
-
+func GetTodos(userID, title, date, status string) ([]models.Todo, error) {
+	SQL := `
+          SELECT id,
+                 user_id,
+                 title,
+                 body,
+                 status,
+                 valid_till,
+                created_at
+          FROM todos
+          WHERE user_id =$1
+          AND (
+			  $2 = '' or status=$2::todo_status
+          )
+          AND (
+              $3='' or valid_till<=$3::TIMESTAMPTZ
+          )
+          AND (
+              $4::TEXT IS NULL OR title LIKE'%'||$4||'%'
+          )
+          order by valid_till
+          `
 	todos := make([]models.Todo, 0)
-	err := database.DB.Select(&todos, SQL, args...)
-	return todos, err
+
+	err := database.DB.Select(&todos, SQL, userID, status, date, title)
+	if err != nil {
+		return nil, err
+	}
+	return todos, nil
 }
 
 func GetAllTodosByFilter(user_id string, status string) ([]models.Todo, error) {

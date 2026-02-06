@@ -20,7 +20,7 @@ func SetupRouter() *chi.Mux {
 		})
 		v1.Post("/auth/register", handlers.Register)
 		v1.Post("/auth/login", handlers.Login)
-		router.Group(func(r chi.Router) {
+		v1.Group(func(r chi.Router) {
 			r.Use(middlewares.Authenticate)
 			r.Route("/todos", func(r chi.Router) {
 				r.Get("/", handlers.GetTodos)

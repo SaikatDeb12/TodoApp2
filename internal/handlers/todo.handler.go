@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"net/http"
+	"time"
 
 	dbhelper "github.com/Saikatdeb12/TodoApp2/internal/database/dbHelper"
+	"github.com/Saikatdeb12/TodoApp2/internal/middleware"
 	middlewares "github.com/Saikatdeb12/TodoApp2/internal/middleware"
 	"github.com/Saikatdeb12/TodoApp2/internal/models"
 	"github.com/Saikatdeb12/TodoApp2/internal/utils"
@@ -17,7 +19,12 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userContext := middlewares.UserContext(r)
+	userContext, ok := middlewares.UserContext(r)
+	if !ok {
+		utils.RespondError(w, http.StatusUnauthorized, nil, "unauthorized")
+		return
+	}
+
 	userID := userContext.UserID
 	var todo models.Todo
 	todo, err := dbhelper.CreateTodoSQL(userID, req.Title, req.Body, req.ValidTill)
@@ -36,30 +43,41 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetTodos(w http.ResponseWriter, r *http.Request) {
-	userContext := middlewares.UserContext(r)
-	userID := userContext.UserID
+	completeStr := r.URL.Query().Get("status")
+	expiringAtStr := r.URL.Query().Get("expiringAt")
+	search := r.URL.Query().Get("search")
 
-	status := r.URL.Query().Get("status")
-	expiryDate := r.URL.Query().Get("date")
-
-	date, err := utils.ParseDate(expiryDate)
+	userCtx, _ := middleware.UserContext(r)
+	userID := userCtx.UserID
+	if expiringAtStr != "" {
+		d, err := time.Parse("2006-01-02", expiringAtStr)
+		if err != nil {
+			utils.RespondError(w, http.StatusBadRequest, err, "invalid date")
+			return
+		}
+		if d.Before(time.Now()) {
+			expiringAtStr = ""
+		}
+	}
+	todos, err := dbhelper.GetTodos(userID, search, expiringAtStr, completeStr)
 	if err != nil {
-		utils.RespondError(w, http.StatusBadRequest, err, "failed to parse date")
+		utils.RespondError(w, http.StatusInternalServerError, err, "Failed to fetch todos")
 		return
 	}
 
-	todos, getErr := dbhelper.GetAllTodos(userID, status, date)
-
-	if getErr != nil {
-		utils.RespondError(w, http.StatusInternalServerError, getErr, "failed to fetch todos")
-		return
-	}
-
-	utils.RespondJSON(w, http.StatusOK, todos)
+	utils.RespondJSON(w, http.StatusOK, struct {
+		Todos []models.Todo `json:"todos"`
+	}{
+		Todos: todos,
+	})
 }
 
 func GetTodoByID(w http.ResponseWriter, r *http.Request) {
-	userContext := middlewares.UserContext(r)
+	userContext, ok := middlewares.UserContext(r)
+	if !ok {
+		utils.RespondError(w, http.StatusUnauthorized, nil, "unauthorized")
+		return
+	}
 	userID := userContext.UserID
 
 	todoID := chi.URLParam(r, "id")
@@ -87,7 +105,11 @@ func UpdateTodoByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userContext := middlewares.UserContext(r)
+	userContext, ok := middlewares.UserContext(r)
+	if !ok {
+		utils.RespondError(w, http.StatusUnauthorized, nil, "unauthorized")
+		return
+	}
 	userID := userContext.UserID
 
 	err := dbhelper.UpdateTodoById(*todo.Title, *todo.Body, *todo.Status, *todo.ValidTill, todoID, userID)
@@ -102,7 +124,11 @@ func UpdateTodoByID(w http.ResponseWriter, r *http.Request) {
 }
 
 func DeleteTodoByID(w http.ResponseWriter, r *http.Request) {
-	userContext := middlewares.UserContext(r)
+	userContext, ok := middlewares.UserContext(r)
+	if !ok {
+		utils.RespondError(w, http.StatusUnauthorized, nil, "unauthorized")
+		return
+	}
 	userID := userContext.UserID
 
 	todoID := chi.URLParam(r, "id")
