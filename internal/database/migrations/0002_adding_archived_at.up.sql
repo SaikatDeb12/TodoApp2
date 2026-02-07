@@ -1,0 +1,2 @@
+ALTER TABLE IF EXISTS todos
+ADD COLUMN IF NOT EXISTS archived_at timestamptz;

@@ -89,7 +89,7 @@ func GetTodoByID(userID, todoID string) (*models.Todo, error) {
 	SQL := `
 		SELECT id, user_id, title, body, created_at, valid_till, status
 		FROM todos
-		WHERE id=$1 AND user_id=$2 AND archived_at is NULL;
+		WHERE id=$1 AND user_id=$2;
 	`
 	todo := models.Todo{}
 
