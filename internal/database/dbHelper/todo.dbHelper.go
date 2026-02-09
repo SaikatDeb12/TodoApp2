@@ -59,18 +59,10 @@ func GetAllTodosByFilter(user_id string, status string) ([]models.Todo, error) {
 		ORDER BY created_at DESC
 	`
 
-	todos := []models.Todo{}
-	rows, err := database.DB.Query(SQL, user_id, status)
+	todos := make([]models.Todo, 0)
+	err := database.DB.Select(&todos, SQL, user_id, status)
 	if err != nil {
-		return todos, err
-	}
-
-	for rows.Next() {
-		var todo models.Todo
-		if err := rows.Scan(&todo.TodoID, &todo.Title, &todo.Body, &todo.CreatedAt, &todo.ValidTill, &todo.Status); err != nil {
-			return todos, err
-		}
-		todos = append(todos, todo)
+		return nil, err
 	}
 
 	return todos, nil
@@ -82,10 +74,10 @@ func GetTodoByID(userID, todoID string) (*models.Todo, error) {
 		FROM todos
 		WHERE id=$1 AND user_id=$2 AND archived_at IS NOT NULL;
 	`
-	todo := models.Todo{}
-
 	// err := DB.QueryRow(SQL, todo_ID, user_ID).Scan(&todo.TodoID, &todo.UserID, &todo.Title, &todo.Body, &todo.CreatedAt, &todo.ValidTill, &todo.Complete)
 	// not to use QueryRow
+
+	var todo models.Todo
 	err := database.DB.Get(&todo, SQL, todoID, userID)
 	if err != nil {
 		return nil, err
