@@ -28,7 +28,7 @@ func CreateTodoSQL(user_id string, title, body string, valid_till time.Time) (mo
 	return todo, err
 }
 
-func GetTodos(userID, title, date, status string) ([]models.Todo, error) {
+func GetTodos(userID, title, date, status string, limit, offset int) ([]models.Todo, error) {
 	SQL := `
           SELECT id,
                  user_id,
@@ -39,24 +39,16 @@ func GetTodos(userID, title, date, status string) ([]models.Todo, error) {
                 created_at
           FROM todos
           WHERE user_id =$1
-          AND (
-			  $2 = '' or status=$2::todo_status
-          )
-          AND (
-              $3='' or valid_till<=$3::TIMESTAMPTZ
-          )
-          AND (
-              $4::TEXT IS NULL OR title LIKE'%'||$4||'%'
-          )
-          order by valid_till
+          AND ( $2 = '' or status=$2::todo_status)
+          AND ( $3='' or valid_till<=$3::TIMESTAMPTZ)
+          AND ( $4::TEXT IS NULL OR title LIKE'%'||$4||'%')
+          ORDER BY valid_till
+		  LIMIT $5 OFFSET $6
           `
 	todos := make([]models.Todo, 0)
 
-	err := database.DB.Select(&todos, SQL, userID, status, date, title)
-	if err != nil {
-		return nil, err
-	}
-	return todos, nil
+	err := database.DB.Select(&todos, SQL, userID, status, date, title, limit, offset)
+	return todos, err
 }
 
 func GetAllTodosByFilter(user_id string, status string) ([]models.Todo, error) {
@@ -72,7 +64,6 @@ func GetAllTodosByFilter(user_id string, status string) ([]models.Todo, error) {
 	if err != nil {
 		return todos, err
 	}
-	defer rows.Close()
 
 	for rows.Next() {
 		var todo models.Todo
@@ -89,7 +80,7 @@ func GetTodoByID(userID, todoID string) (*models.Todo, error) {
 	SQL := `
 		SELECT id, user_id, title, body, created_at, valid_till, status
 		FROM todos
-		WHERE id=$1 AND user_id=$2;
+		WHERE id=$1 AND user_id=$2 AND archived_at IS NOT NULL;
 	`
 	todo := models.Todo{}
 
@@ -105,7 +96,7 @@ func GetTodoByID(userID, todoID string) (*models.Todo, error) {
 
 func UpdateTodoById(name, description string, status string, expiringAt time.Time, todoID, userID string) error {
 	SQL := `UPDATE todos 
-			SET name=$1,description=$2,status=$3,expiring_at=$4
+			SET name=$1,description=$2,status=$3,expiring_at=$4sql
 			WHERE id=$5 
 			and user_id=$6;`
 	_, err := database.DB.Exec(

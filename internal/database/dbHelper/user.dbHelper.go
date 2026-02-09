@@ -57,7 +57,11 @@ func CreateUser(name, email, password string) (string, error) {
 
 func GetUserAuthByEmail(email string) (models.User, error) {
 	var user models.User
-	SQL := `SELECT id, password FROM users WHERE email=$1 AND archived_at IS NULL`
+	SQL := `
+		SELECT id, password, name, email, created_at, archived_at 
+		FROM users
+		WHERE email=$1 AND archived_at IS NULL
+	`
 
 	err := database.DB.Get(&user, SQL, email)
 	return user, err

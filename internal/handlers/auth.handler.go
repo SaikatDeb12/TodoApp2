@@ -88,6 +88,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		utils.RespondError(w, http.StatusInternalServerError, err, "no users fetched")
+		return
 	}
 
 	if err := utils.CheckPassword(user.Password, req.Password); err != nil {

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	dbhelper "github.com/Saikatdeb12/TodoApp2/internal/database/dbHelper"
@@ -43,12 +44,36 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetTodos(w http.ResponseWriter, r *http.Request) {
-	completeStr := r.URL.Query().Get("status")
-	expiringAtStr := r.URL.Query().Get("expiringAt")
-	search := r.URL.Query().Get("search")
+	query := r.URL.Query()
+	completeStr := query.Get("status")
+	expiringAtStr := query.Get("expiringAt")
+	search := query.Get("search")
+
+	limit := 10
+	page := 1
+	var err error
+
+	if limitInput := query.Get("limit"); limitInput != "" {
+		limit, err = strconv.Atoi(limitInput)
+		if err != nil {
+			utils.RespondError(w, http.StatusBadRequest, err, "invalid limit")
+			return
+		}
+	}
+
+	if pageInput := query.Get("page"); pageInput != "" {
+		page, err = strconv.Atoi(pageInput)
+		if err != nil {
+			utils.RespondError(w, http.StatusBadRequest, err, "invalid limit")
+			return
+		}
+	}
+
+	offset := (page - 1) * limit
 
 	userCtx, _ := middleware.UserContext(r)
 	userID := userCtx.UserID
+
 	if expiringAtStr != "" {
 		d, err := time.Parse("2006-01-02", expiringAtStr)
 		if err != nil {
@@ -59,16 +84,16 @@ func GetTodos(w http.ResponseWriter, r *http.Request) {
 			expiringAtStr = ""
 		}
 	}
-	todos, err := dbhelper.GetTodos(userID, search, expiringAtStr, completeStr)
+	todos, err := dbhelper.GetTodos(userID, search, expiringAtStr, completeStr, limit, offset)
 	if err != nil {
 		utils.RespondError(w, http.StatusInternalServerError, err, "Failed to fetch todos")
 		return
 	}
 
-	utils.RespondJSON(w, http.StatusOK, struct {
-		Todos []models.Todo `json:"todos"`
-	}{
-		Todos: todos,
+	utils.RespondJSON(w, http.StatusOK, map[string]any{
+		"page":  page,
+		"limit": limit,
+		"todos": todos,
 	})
 }
 
@@ -145,6 +170,6 @@ func DeleteTodoByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.RespondJSON(w, http.StatusOK, map[string]string{
-		"message": "Todo deleted",
+		"message": "todo deleted",
 	})
 }
