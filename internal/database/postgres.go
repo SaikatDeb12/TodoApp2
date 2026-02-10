@@ -38,8 +38,6 @@ func migrateUp(db *sqlx.DB) error {
 }
 
 func Connect() error {
-	// connStr := utils.GoDotEnvVariable("POSTGRESQL_URL")
-
 	db_user := utils.GoDotEnvVariable("DB_USER")
 	db_password := utils.GoDotEnvVariable("DB_PASSWORD")
 	db_name := utils.GoDotEnvVariable("DB_NAME")
@@ -59,4 +57,24 @@ func Connect() error {
 
 	fmt.Println("Connected to PostgreSQL")
 	return migrateUp(DB)
+}
+
+func Tx(fn func(tx *sqlx.Tx) error) error {
+	tx, err := DB.Beginx()
+	if err != nil {
+		return fmt.Errorf("failed to start a transaction: %+v", err)
+	}
+	defer func() {
+		if err != nil {
+			if rollBackErr := tx.Rollback(); rollBackErr != nil {
+				fmt.Printf("failed to rollback tx: %s", rollBackErr)
+			}
+			return
+		}
+		if commitErr := tx.Commit(); commitErr != nil {
+			fmt.Printf("failed to commit tx: %s", commitErr)
+		}
+	}()
+	err = fn(tx)
+	return err
 }

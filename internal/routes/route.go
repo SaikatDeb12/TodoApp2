@@ -33,6 +33,7 @@ func SetupRouter() *chi.Mux {
 				})
 			})
 			r.Post("/auth/logout", handlers.Logout)
+			r.Delete("/user/delete", handlers.DeleteUser)
 		})
 	})
 

@@ -5,6 +5,7 @@ import (
 
 	"github.com/Saikatdeb12/TodoApp2/internal/database"
 	"github.com/Saikatdeb12/TodoApp2/internal/models"
+	"github.com/jmoiron/sqlx"
 )
 
 func CheckUserExistsByEmail(email string) (bool, error) {
@@ -44,14 +45,14 @@ func ValidateUserSession(sessionID string) (string, error) {
 	return userID, nil
 }
 
-func CreateUser(name, email, password string) (string, error) {
+func CreateUserTx(trx *sqlx.Tx, name, email, password string) (string, error) {
 	SQL := `
 		INSERT INTO users (name, email, password)
 		VALUES ($1, $2, $3)
 		RETURNING id
 	`
 	var userID string
-	err := database.DB.Get(&userID, SQL, name, email, password)
+	err := trx.Get(&userID, SQL, name, email, password)
 	return userID, err
 }
 
@@ -78,17 +79,56 @@ func CreateSession(userID string) (string, error) {
 	return sessionID, err
 }
 
-func ArchiveUser(userID string) (int64, error) {
+func CreateSessionTx(trx *sqlx.Tx, userID string) (string, error) {
+	SQL := `
+		INSERT INTO sessions (user_id) 
+		VALUES($1)
+		RETURNING id;
+	`
+	var sessionID string
+	err := trx.Get(&sessionID, SQL, userID)
+	return sessionID, err
+}
+
+func ArchiveUser(userID string) error {
 	SQL := `
 		UPDATE users
 		SET archived_at = NOW()
 		WHERE id = $1 AND archived_at IS NULL
 	`
 
-	res, err := database.DB.Exec(SQL, userID)
-	if err != nil {
-		return 0, err
-	}
+	_, err := database.DB.Exec(SQL, userID)
+	return err
+}
 
-	return res.RowsAffected()
+func ArchiveSession(userID string) error {
+	SQL := `
+		UPDATE session
+		SET archived_at = NOW()
+		WHERE id = $1 AND archived_at IS NULL
+	`
+
+	_, err := database.DB.Exec(SQL, userID)
+	return err
+}
+
+func ArchiveUserTx(trx *sqlx.Tx, userID string) error {
+	SQL := `
+		UPDATE users
+		SET archived_at = NOW()
+		WHERE id = $1 AND archived_at IS NULL
+	`
+	_, err := trx.Exec(SQL, userID)
+	return err
+}
+
+func ArchiveSessionTx(trx *sqlx.Tx, userID string) error {
+	SQL := `
+		UPDATE session
+		SET archived_at = NOW()
+		WHERE id = $1 AND archived_at IS NULL
+	`
+
+	_, err := trx.Exec(SQL, userID)
+	return err
 }

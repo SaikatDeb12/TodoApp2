@@ -158,14 +158,9 @@ func DeleteTodoByID(w http.ResponseWriter, r *http.Request) {
 
 	todoID := chi.URLParam(r, "id")
 
-	affected, err := dbhelper.DeleteTodoByID(userID, todoID)
+	err := dbhelper.DeleteTodoByID(userID, todoID)
 	if err != nil {
 		utils.RespondError(w, http.StatusBadRequest, err, "delete operation failed")
-		return
-	}
-
-	if affected == 0 {
-		utils.RespondError(w, http.StatusNotFound, err, "todo not found")
 		return
 	}
 

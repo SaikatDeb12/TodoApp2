@@ -5,10 +5,12 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/Saikatdeb12/TodoApp2/internal/database"
 	dbhelper "github.com/Saikatdeb12/TodoApp2/internal/database/dbHelper"
 	middlewares "github.com/Saikatdeb12/TodoApp2/internal/middleware"
 	"github.com/Saikatdeb12/TodoApp2/internal/models"
 	"github.com/Saikatdeb12/TodoApp2/internal/utils"
+	"github.com/jmoiron/sqlx"
 )
 
 func Register(w http.ResponseWriter, r *http.Request) {
@@ -43,27 +45,33 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, err := dbhelper.CreateUser(req.Name, req.Email, hashedPassword)
-	if err != nil {
-		utils.RespondError(w, http.StatusInternalServerError, err, "failed to create user")
-		return
-	}
+	var jwtToken string
+	trxErr := database.Tx(func(tx *sqlx.Tx) error {
+		userID, err := dbhelper.CreateUserTx(tx, req.Name, req.Email, hashedPassword)
+		if err != nil {
+			return err
+		}
 
-	sessionID, err := dbhelper.CreateSession(userID)
-	if err != nil {
-		utils.RespondError(w, http.StatusInternalServerError, err, "failed to create session")
-		return
-	}
+		sessionID, err := dbhelper.CreateSessionTx(tx, userID)
+		if err != nil {
+			return err
+		}
+		token, err := utils.GenerateJWT(userID, sessionID)
+		if err != nil {
+			return err
+		}
+		jwtToken = token
+		return err
+	})
 
-	token, err := utils.GenerateJWT(userID, sessionID)
-	if err != nil {
-		utils.RespondError(w, http.StatusInternalServerError, err, "error while generating token")
+	if trxErr != nil {
+		utils.RespondError(w, http.StatusInternalServerError, trxErr, "user deletion failed")
 		return
 	}
 
 	utils.RespondJSON(w, http.StatusCreated, map[string]string{
 		"message": "user registered successfully",
-		"token":   token,
+		"token":   jwtToken,
 	})
 }
 

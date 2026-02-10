@@ -5,17 +5,8 @@ import (
 
 	"github.com/Saikatdeb12/TodoApp2/internal/database"
 	"github.com/Saikatdeb12/TodoApp2/internal/models"
+	"github.com/jmoiron/sqlx"
 )
-
-func ArchiveSession(sessionID string) error {
-	SQL := `
-		UPDATE sessions
-		SET archived_at = NOW()
-		WHERE id = $1 AND archived_at IS NULL
-	`
-	_, err := database.DB.Exec(SQL, sessionID)
-	return err
-}
 
 func CreateTodoSQL(user_id string, title, body string, valid_till time.Time) (models.Todo, error) {
 	SQL := `
@@ -99,7 +90,7 @@ func UpdateTodoById(name, description string, status string, expiringAt time.Tim
 	return nil
 }
 
-func DeleteTodoByID(userID, todoID string) (int64, error) {
+func DeleteTodoByID(userID, todoID string) error {
 	SQL := `
 		UPDATE todos
 		SET archived_at=NOW()
@@ -107,10 +98,29 @@ func DeleteTodoByID(userID, todoID string) (int64, error) {
 		AND todo_id=$2
 		AND archived_at is NULL
 	`
-	res, err := database.DB.Exec(SQL, todoID, userID)
-	if err != nil {
-		return 0, err
-	}
+	_, err := database.DB.Exec(SQL, todoID, userID)
 
-	return res.RowsAffected()
+	return err
+}
+
+func DeleteAllTodos(userID string) error {
+	SQL := `
+		UPDATE todos
+		SET archived_at=NOW()
+		WHERE user_id=$1
+		AND archived_at is NULL
+	`
+	_, err := database.DB.Exec(SQL, userID)
+	return err
+}
+
+func DeleteAllTodosTx(trx *sqlx.Tx, userID string) error {
+	SQL := `
+		UPDATE todos
+		SET archived_at=NOW()
+		WHERE user_id=$1
+		AND archived_at is NULL
+	`
+	_, err := trx.Exec(SQL, userID)
+	return err
 }
