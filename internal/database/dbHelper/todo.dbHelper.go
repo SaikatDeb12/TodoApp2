@@ -100,14 +100,14 @@ func UpdateTodoById(name, description string, status string, expiringAt time.Tim
 }
 
 func DeleteTodoByID(userID, todoID string) (int64, error) {
-	query := `
+	SQL := `
 		UPDATE todos
 		SET archived_at=NOW()
 		WHERE user_id=$1
 		AND todo_id=$2
 		AND archived_at is NULL
 	`
-	res, err := database.DB.Exec(query, todoID, userID)
+	res, err := database.DB.Exec(SQL, todoID, userID)
 	if err != nil {
 		return 0, err
 	}

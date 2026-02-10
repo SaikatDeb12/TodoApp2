@@ -14,7 +14,11 @@ func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Fatal("failed to load .env")
 	}
-	database.Connect()
+
+	err := database.Connect()
+	if err != nil {
+		log.Fatal("failed to connect to Db")
+	}
 	r := routes.SetupRouter()
 	fmt.Println("Server running on port 8000")
 	log.Fatal(http.ListenAndServe(":8000", r))
