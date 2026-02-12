@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/Saikatdeb12/TodoApp2/internal/database"
@@ -44,7 +45,6 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		utils.RespondError(w, http.StatusInternalServerError, err, "password hasing failed")
 		return
 	}
-
 	var jwtToken string
 	trxErr := database.Tx(func(tx *sqlx.Tx) error {
 		userID, err := dbhelper.CreateUserTx(tx, req.Name, req.Email, hashedPassword)
@@ -131,7 +131,14 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 	}
 	sessionID := userContext.SessionID
 
-	err := dbhelper.ArchiveSession(sessionID)
+	fmt.Print(sessionID)
+	err := dbhelper.ValidateUserSession(sessionID)
+	if err != nil {
+		utils.RespondError(w, http.StatusUnauthorized, err, "no active session")
+		return
+	}
+
+	err = dbhelper.ArchiveSession(sessionID)
 	if err != nil {
 		utils.RespondError(w, http.StatusInternalServerError, err, "no session found")
 		return

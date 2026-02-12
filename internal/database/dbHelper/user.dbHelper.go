@@ -26,23 +26,20 @@ func CheckUserExistsByEmail(email string) (bool, error) {
 	return true, nil
 }
 
-func ValidateUserSession(sessionID string) (string, error) {
+func ValidateUserSession(sessionID string) error {
+	// SQL := `
+	// 	SELECT user_id FROM session
+	// 	WHERE id=$1
+	// 	AND archived_at is NULL
+	// `
 	SQL := `
-		SELECT user_id FROM session 
-		WHERE id=$1 
-		AND archived_at is NULL
+		UPDATE sessions
+		SET archived_at=NOW()
+		WHERE id=$1
+		AND archived_at IS NULL;
 	`
-
-	// var currentSession models.Session
-	var userID string
-
-	err := database.DB.Get(&userID, SQL, sessionID)
-	if err != nil {
-		return "", err
-	}
-
-	// return currentSession.UserID, nil
-	return userID, nil
+	err := database.DB.Get(SQL, sessionID)
+	return err
 }
 
 func CreateUserTx(trx *sqlx.Tx, name, email, password string) (string, error) {
@@ -103,7 +100,7 @@ func ArchiveUser(userID string) error {
 
 func ArchiveSession(userID string) error {
 	SQL := `
-		UPDATE session
+		UPDATE sessions
 		SET archived_at = NOW()
 		WHERE id = $1 AND archived_at IS NULL
 	`
@@ -124,7 +121,7 @@ func ArchiveUserTx(trx *sqlx.Tx, userID string) error {
 
 func ArchiveSessionTx(trx *sqlx.Tx, userID string) error {
 	SQL := `
-		UPDATE session
+		UPDATE sessions
 		SET archived_at = NOW()
 		WHERE id = $1 AND archived_at IS NULL
 	`

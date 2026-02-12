@@ -33,6 +33,7 @@ func GetTodos(userID, title, date, status string, limit, offset int) ([]models.T
           AND ( $2 = '' or status=$2::todo_status)
           AND ( $3='' or valid_till<=$3::TIMESTAMPTZ)
           AND ( $4::TEXT IS NULL OR title LIKE'%'||$4||'%')
+		  AND archived_at IS NULL
           ORDER BY valid_till
 		  LIMIT $5 OFFSET $6
           `
@@ -77,17 +78,17 @@ func GetTodoByID(userID, todoID string) (*models.Todo, error) {
 	return &todo, nil
 }
 
-func UpdateTodoById(name, description string, status string, expiringAt time.Time, todoID, userID string) error {
+func UpdateTodoById(title, body, status, valid_till *string, todoID, userID string) error {
 	SQL := `UPDATE todos 
-			SET name=$1,description=$2,status=$3,expiring_at=$4sql
+			SET title=COALESCE($1,title),
+			body=COALESCE($2,body),
+			status=COALESCE($3,status),
+			valid_till=COALESCE($4::timestamptz,valid_till)
 			WHERE id=$5 
 			and user_id=$6;`
 	_, err := database.DB.Exec(
-		SQL, name, description, status, expiringAt, todoID, userID)
-	if err != nil {
-		return err
-	}
-	return nil
+		SQL, title, body, status, valid_till, todoID, userID)
+	return err
 }
 
 func DeleteTodoByID(userID, todoID string) error {
@@ -95,10 +96,10 @@ func DeleteTodoByID(userID, todoID string) error {
 		UPDATE todos
 		SET archived_at=NOW()
 		WHERE user_id=$1
-		AND todo_id=$2
+		AND id=$2
 		AND archived_at is NULL
 	`
-	_, err := database.DB.Exec(SQL, todoID, userID)
+	_, err := database.DB.Exec(SQL, userID, todoID)
 
 	return err
 }

@@ -125,6 +125,11 @@ func UpdateTodoByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if todo.Title == nil && todo.Body == nil && todo.Status == nil && todo.ValidTill == nil {
+		utils.RespondError(w, http.StatusBadRequest, nil, "at least one field must be provided")
+		return
+	}
+
 	if err := utils.ValidateStruct(todo); err != nil {
 		utils.RespondError(w, http.StatusBadRequest, err, "validation failed")
 		return
@@ -137,7 +142,7 @@ func UpdateTodoByID(w http.ResponseWriter, r *http.Request) {
 	}
 	userID := userContext.UserID
 
-	err := dbhelper.UpdateTodoById(*todo.Title, *todo.Body, *todo.Status, *todo.ValidTill, todoID, userID)
+	err := dbhelper.UpdateTodoById(todo.Title, todo.Body, todo.Status, todo.ValidTill, todoID, userID)
 	if err != nil {
 		utils.RespondError(w, http.StatusInternalServerError, err, "invalid payload")
 		return
@@ -155,7 +160,6 @@ func DeleteTodoByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	userID := userContext.UserID
-
 	todoID := chi.URLParam(r, "id")
 
 	err := dbhelper.DeleteTodoByID(userID, todoID)

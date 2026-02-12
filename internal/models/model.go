@@ -16,7 +16,7 @@ type User struct {
 type Todo struct {
 	TodoID    string    `json:"id" db:"id"`
 	UserID    string    `json:"userID" db:"user_id"`
-	Title     string    `json:"title" db:"title"` // lower and trim
+	Title     string    `json:"title" db:"title"`
 	Body      string    `json:"body" db:"body"`
 	CreatedAt time.Time `json:"createdAt" db:"created_at"`
 	ValidTill time.Time `json:"validTill" db:"valid_till"`
@@ -48,10 +48,10 @@ type CreateTodoRequest struct {
 }
 
 type UpdateTodoRequest struct {
-	Title     *string    `json:"title" validate:"omitempty,min=3,max=100"`
-	Body      *string    `json:"body" validate:"omitempty"`
-	Status    *string    `json:"status"`
-	ValidTill *time.Time `json:"valid_till"`
+	Title     *string `json:"title" validate:"omitempty,min=3,max=100"`
+	Body      *string `json:"body" validate:"omitempty"`
+	Status    *string `json:"status" validate:"omitempty,oneof=complete incomplete"`
+	ValidTill *string `json:"valid_till" validate:"omitempty"`
 }
 
 type UpcomingTodosRequest struct {
