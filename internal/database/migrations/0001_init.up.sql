@@ -11,12 +11,12 @@ CREATE TABLE IF NOT EXISTS users (
     archived_at  timestamptz
 );
 
--- Unique email index
+-- unique email index
 CREATE UNIQUE INDEX idx_users_unique_email_active
-    ON users (email)
+    ON users (TRIM(LOWER(email)))
     WHERE archived_at IS NULL;
 
--- Index for archived lookups
+-- index for archived lookups
 CREATE INDEX idx_users_archived_at
     ON users (archived_at);
 

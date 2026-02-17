@@ -7,6 +7,7 @@ import (
 
 	"github.com/Saikatdeb12/TodoApp2/internal/database"
 	"github.com/Saikatdeb12/TodoApp2/internal/routes"
+	"github.com/Saikatdeb12/TodoApp2/internal/utils"
 	"github.com/joho/godotenv"
 )
 
@@ -17,9 +18,12 @@ func main() {
 
 	err := database.Connect()
 	if err != nil {
-		log.Fatal("failed to connect to Db")
+		log.Fatal("failed to connect to DB")
 	}
+
 	r := routes.SetupRouter()
-	fmt.Println("Server running on port 8000")
-	log.Fatal(http.ListenAndServe(":8000", r))
+	serverPort := utils.GoDotEnvVariable("SERVER_PORT")
+	addr := fmt.Sprintf(":%s", serverPort)
+	fmt.Printf("Server running on port %s", serverPort)
+	log.Fatal(http.ListenAndServe(addr, r))
 }

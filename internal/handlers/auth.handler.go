@@ -6,12 +6,10 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/Saikatdeb12/TodoApp2/internal/database"
 	dbhelper "github.com/Saikatdeb12/TodoApp2/internal/database/dbHelper"
 	middlewares "github.com/Saikatdeb12/TodoApp2/internal/middleware"
 	"github.com/Saikatdeb12/TodoApp2/internal/models"
 	"github.com/Saikatdeb12/TodoApp2/internal/utils"
-	"github.com/jmoiron/sqlx"
 )
 
 func Register(w http.ResponseWriter, r *http.Request) {
@@ -27,16 +25,9 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isEmailExists, err := dbhelper.CheckUserExistsByEmail(req.Email)
+	err := dbhelper.CheckUserExistsByEmail(req.Email)
 	if err != nil {
 		utils.RespondError(w, http.StatusInternalServerError, err, "email already exists")
-		return
-	}
-
-	if isEmailExists {
-		utils.RespondJSON(w, http.StatusConflict, map[string]string{
-			"error": "user already exists",
-		})
 		return
 	}
 
@@ -45,33 +36,28 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		utils.RespondError(w, http.StatusInternalServerError, err, "password hasing failed")
 		return
 	}
-	var jwtToken string
-	trxErr := database.Tx(func(tx *sqlx.Tx) error {
-		userID, err := dbhelper.CreateUserTx(tx, req.Name, req.Email, hashedPassword)
-		if err != nil {
-			return err
-		}
 
-		sessionID, err := dbhelper.CreateSessionTx(tx, userID)
-		if err != nil {
-			return err
-		}
-		token, err := utils.GenerateJWT(userID, sessionID)
-		if err != nil {
-			return err
-		}
-		jwtToken = token
-		return err
-	})
+	userID, err := dbhelper.CreateUser(req.Name, req.Email, hashedPassword)
+	if err != nil {
+		utils.RespondError(w, http.StatusInternalServerError, err, "failed to create user")
+		return
+	}
 
-	if trxErr != nil {
-		utils.RespondError(w, http.StatusInternalServerError, trxErr, "user deletion failed")
+	sessionID, err := dbhelper.CreateSession(userID)
+	if err != nil {
+		utils.RespondError(w, http.StatusInternalServerError, err, "failed to create session")
+		return
+	}
+
+	token, err := utils.GenerateJWT(userID, sessionID)
+	if err != nil {
+		utils.RespondError(w, http.StatusInternalServerError, err, "token not created")
 		return
 	}
 
 	utils.RespondJSON(w, http.StatusCreated, map[string]string{
 		"message": "user registered successfully",
-		"token":   jwtToken,
+		"token":   token,
 	})
 }
 
