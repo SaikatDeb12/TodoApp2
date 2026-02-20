@@ -8,13 +8,13 @@ services:
         ports:
             - "5433:5432"
         environment:
-            POSTGRES_USER: todo2_user
-            POSTGRES_PASSWORD: todo2_pass
-            POSTGRES_DB: todo2_db
+            POSTGRES_USER: ${DB_USER}
+            POSTGRES_PASSWORD: ${DB_PASSWORD}
+            POSTGRES_DB: ${DB_NAME}
         volumes:
             - pgdata://var/lib/postgresql/data
         healthcheck:
-            test: ["CMD-SHELL", "pg_isready -U todo2_user -d todo2_db"]
+            test: ["CMD-SHELL", "pg_isready -U $$DB_USER -d $$DB_NAME"]
             interval: 5s
             timeout: 5s
             retries: 5
