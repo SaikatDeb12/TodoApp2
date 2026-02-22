@@ -48,7 +48,7 @@ func GetUserAuthByEmail(email string) (models.User, error) {
 	SQL := `
 		SELECT id, password, name, email, created_at, archived_at 
 		FROM users
-		WHERE email=$1 AND archived_at IS NULL
+		WHERE email=TRIM(LOWER($1)) AND archived_at IS NULL
 	`
 	err := database.DB.Get(&user, SQL, email)
 	return user, err

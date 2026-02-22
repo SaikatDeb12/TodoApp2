@@ -36,6 +36,5 @@ func SetupRouter() *chi.Mux {
 			r.Delete("/user/delete", handlers.DeleteUser)
 		})
 	})
-
 	return router
 }

@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"database/sql"
-	"errors"
 	"fmt"
 	"net/http"
 
@@ -77,10 +75,6 @@ func Login(w http.ResponseWriter, r *http.Request) {
 
 	user, err := dbhelper.GetUserAuthByEmail(req.Email)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			utils.RespondError(w, http.StatusUnauthorized, err, "invalid credentials")
-			return
-		}
 		utils.RespondError(w, http.StatusInternalServerError, err, "no users fetched")
 		return
 	}
